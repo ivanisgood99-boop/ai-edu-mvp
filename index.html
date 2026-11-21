@@ -1,353 +1,174 @@
 <!doctype html>
 <html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI 個人化智慧教育平台 MVP</title>
-    <style>
-      * { box-sizing: border-box; }
-      body { margin: 0; padding: 0 0 48px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif; background: #f7f9f5; color: #1e293b; line-height: 1.55; }
-      header { background: #fff; border-bottom: 1px solid #d1fae5; position: sticky; top: 0; z-index: 20; }
-      .wrap { max-width: 860px; margin: 0 auto; padding: 12px 16px; }
-      .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-      .tabs { display: flex; gap: 4px; background: #ecfdf5; padding: 4px; border-radius: 12px; }
-      .tab-btn { border: 0; background: transparent; color: #064e3b; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
-      .tab-btn.active { background: #065f46; color: #fff; }
-      .card { background: #fff; border: 1px solid #d1fae5; border-radius: 16px; padding: 16px; margin-bottom: 14px; }
-      .btn { border: 0; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer; background: #047857; color: #fff; }
-      .btn-soft { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-      .btn-warn { background: #fffbeb; color: #78350f; border: 1px solid #fde68a; }
-      .btn-danger { background: #e11d48; color: #fff; }
-      input[type="text"], input[type="password"] { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; margin: 6px 0 10px; }
-      .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin: 10px 0; font-size: 13px; }
-      .good { background: #ecfdf5; border-color: #a7f3d0; color: #064e3b; }
-      .hint { background: #fffbeb; border-color: #fde68a; color: #78350f; }
-      #err-box { display: none; padding: 12px; border: 1px solid #e11d48; background: #fff1f2; color: #881337; border-radius: 12px; font-size: 12px; white-space: pre-wrap; margin-bottom: 12px; }
-    </style>
-    <script>
-      window.__showErr = function (m) {
-        var b = document.getElementById("err-box");
-        if (!b) return;
-        b.style.display = "block";
-        b.textContent += (b.textContent ? "\n\n" : "") + m;
-      };
-      window.onerror = function (msg, url, line) {
-        window.__showErr("Error: " + msg + (line ? " (Line " + line + ")" : ""));
-      };
-    </script>
-  </head>
-  <body>
-    <header>
-      <div class="wrap row">
-        <div><strong style="color:#064e3b;">AI 個人化教育平台</strong> <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#78350f;">M1 完整版</span></div>
-        <div class="tabs">
-          <button id="tab-student" class="tab-btn active">學生學習</button>
-          <button id="tab-teacher" class="tab-btn">教師班級</button>
-          <button id="tab-admin" class="tab-btn">平台管理</button>
-        </div>
-      </div>
-    </header>
-    <main class="wrap">
-      <div id="err-box"></div>
-      <div id="app" class="card">正在啟動平台...</div>
-    </main>
-    <script>
-      (function () {
-        var SB_URL = "https://antfbdsqrznnssdvpzcn.supabase.co";
-        var SB_KEY = "sb_publishable_z7l4i49w93dZ0yrR5SPbVw_ShVGKm0J";
-        var ADMIN_KEY = "ADMIN2026";
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 個人化教育平台</title>
+  <style>
+    body{margin:0;padding:16px;font-family:sans-serif;background:#f7f9f5;color:#1e293b}
+    .card{max-width:780px;margin:0 auto 12px;background:#fff;border:1px solid #d1fae5;border-radius:14px;padding:16px}
+    .btn{border:0;border-radius:8px;padding:8px 12px;background:#047857;color:#fff;font-weight:700;cursor:pointer;margin-right:6px;margin-top:6px}
+    .btn-gray{background:#e2e8f0;color:#1e293b}
+    input{width:100%;box-sizing:border-box;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 10px;font-size:14px}
+    #err{display:none;max-width:780px;margin:0 auto 12px;padding:10px;background:#fff1f2;border:1px solid #e11d48;color:#881337;border-radius:10px;font-size:12px;white-space:pre-wrap}
+  </style>
+  <script>
+    window.onerror = function(m, u, l){
+      var e = document.getElementById("err");
+      if(e){ e.style.display = "block"; e.textContent = "JS錯誤: " + m + " (第" + l + "行)"; }
+    };
+  </script>
+</head>
+<body>
+  <div id="err"></div>
+  <div class="card">
+    <strong style="color:#064e3b">AI 個人化教育平台</strong><br>
+    <button class="btn" onclick="setTab('student')">學生學習</button>
+    <button class="btn btn-gray" onclick="setTab('teacher')">教師班級</button>
+    <button class="btn btn-gray" onclick="setTab('admin')">平台管理</button>
+  </div>
+  <div id="box" class="card">初始化中...</div>
 
-        var MODS = {
-          "M1-01": {
-            title: "M1-01 正整數指數",
-            teach: "1. a^n 代表 n 個 a 連乘（例如 2^3 = 8）。\n2. (-3)^2 = 9，但 -3^2 = -9（括號決定次方作用範圍）。",
-            guide: "為什麼 (-2)^3 是負數，但 (-2)^4 是正數？",
-            kw: ["奇數", "偶數", "負", "正", "-8", "16"],
-            checkQ: "下列哪一個與 -5^2 相等？（輸入 A、B 或 C）\nA. (-5)^2\nB. -(5 × 5)\nC. (-5) × 2",
-            checkA: "B",
-            pracQ: "請計算：2^3 + (-3)^2 的值是多少？",
-            pracA: "17",
-            remQ: "【補救確認題】請計算 (-2)^3 + 3^2 的值是多少？",
-            remA: "1",
-            hints: {
-              H1: "先展開連乘，數數負號個數與括號範圍。",
-              H2: "奇數個負號相乘為負，偶數個負號相乘為正；無括號時先算次方再加負號。",
-              H3: "2^3 = 8，(-3)^2 = 9，-5^2 = -(5×5) = -25。",
-              H4: "引導可答「奇數為負、偶數為正」；檢查選 B；練習答案為 17。"
-            }
-          },
-          "M1-02": {
-            title: "M1-02 零指數",
-            teach: "1. 當底數 a ≠ 0 時，規定 a^0 = 1（例如 8^0 = 1、(-6)^0 = 1）。\n2. 0^0 無意義，因此底數不能為 0。",
-            guide: "為什麼非零實數的 0 次方等於 1（例如 8^0 = 1）？",
-            kw: ["除", "自己", "1", "8÷8", "8/8", "規律"],
-            checkQ: "若 (x - 3)^0 = 1 成立，x 必須滿足什麼條件？（輸入 A、B 或 C）\nA. 任意實數\nB. x ≠ 3\nC. x > 3",
-            checkA: "B",
-            pracQ: "請計算：(-6)^0 + 2^3 - 5^0 的值是多少？",
-            pracA: "8",
-            remQ: "【補救確認題】請計算 10^0 + (-2)^0 + 3^1 的值是多少？",
-            remA: "5",
-            hints: {
-              H1: "想想指數每減 1 相當於除以底數，且底數不能為 0。",
-              H2: "8^1 ÷ 8^1 = 8^0 = 1；(x - 3) 不能等於 0。",
-              H3: "(-6)^0 = 1，5^0 = 1，2^3 = 8。",
-              H4: "引導可答「自己除以自己等於 1」；檢查選 B；練習答案為 8。"
-            }
-          }
-        };
+<script>
+var SB_URL = "https://antfbdsqrznnssdvpzcn.supabase.co";
+var SB_KEY = "sb_publishable_z7l4i49w93dZ0yrR5SPbVw_ShVGKm0J";
+var ADMIN_KEY = "ADMIN2026";
+var curTab = "student";
+var adminUnlocked = false;
 
-        var st = {
-          role: "student",
-          name: localStorage.getItem("edu_student_name") || "",
-          code: localStorage.getItem("edu_class_code") || "MATH2026",
-          modId: "M1-01",
-          stage: 1,
-          tries: 0,
-          hadErr: false,
-          msg: "",
-          tName: localStorage.getItem("edu_teacher_name") || "",
-          tOk: false,
-          adminOk: sessionStorage.getItem("edu_admin_ok") === "1"
-        };
+function req(table, method, query, body){
+  var opt = {
+    method: method || "GET",
+    headers: {
+      "apikey": SB_KEY,
+      "Authorization": "Bearer " + SB_KEY,
+      "Content-Type": "application/json"
+    }
+  };
+  if(method === "POST") opt.headers["Prefer"] = "resolution=merge-duplicates,return=representation";
+  if(method === "PATCH") opt.headers["Prefer"] = "return=representation";
+  if(body) opt.body = JSON.stringify(body);
+  return fetch(SB_URL + "/rest/v1/" + table + (query ? "?" + query : ""), opt)
+    .then(function(r){ return r.text().then(function(t){ return { ok: r.ok, status: r.status, text: t }; }); });
+}
 
-        async function api(tbl, method, q, body) {
-          var h = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json" };
-          if (method === "POST") h["Prefer"] = "resolution=merge-duplicates,return=representation";
-          if (method === "PATCH") h["Prefer"] = "return=representation";
-          var r = await fetch(SB_URL + "/rest/v1/" + tbl + (q ? "?" + q : ""), {
-            method: method || "GET",
-            headers: h,
-            body: body ? JSON.stringify(body) : undefined
-          });
-          var t = await r.text();
-          if (!r.ok) throw new Error("HTTP " + r.status + " " + t);
-          return t ? JSON.parse(t) : null;
-        }
+function setTab(t){
+  curTab = t;
+  var errEl = document.getElementById("err");
+  if(errEl){ errEl.style.display = "none"; errEl.textContent = ""; }
+  draw();
+}
 
-        async function saveProg(sNum, lv) {
-          if (!st.name.trim()) return;
-          try {
-            await api("student_progress", "POST", null, [{
-              id: (st.code.trim() || "MATH2026") + "_" + st.name.trim() + "_" + st.modId,
-              student_name: st.name.trim(),
-              class_code: st.code.trim() || "MATH2026",
-              module_id: st.modId,
-              current_stage: sNum,
-              mastery_level: lv,
-              need_remedial: st.hadErr,
-              updated_at: new Date().toISOString()
-            }]);
-            st.msg = "已同步至雲端（第 " + sNum + " 階段）";
-          } catch (e) { st.msg = "同步失敗：" + e.message; }
-          render();
-        }
+function draw(){
+  var box = document.getElementById("box");
+  if(curTab === "student"){
+    box.innerHTML =
+      "<h3>學生學習（M1-01 正整數指數）</h3>" +
+      "<label>學生姓名</label><input id='sName' placeholder='例如：陳小華'>" +
+      "<label>請計算 2^3 + (-3)^2 的值是多少？</label><input id='sAns' placeholder='輸入答案'>" +
+      "<button class='btn' onclick='submitAns()'>送出並存檔</button>" +
+      "<div id='sMsg' style='margin-top:10px;font-size:13px;color:#047857'></div>";
+  } else if(curTab === "teacher"){
+    box.innerHTML =
+      "<h3>教師班級（限已核准教師）</h3>" +
+      "<label>輸入已核准的教師姓名</label><input id='tName' placeholder='輸入教師姓名'>" +
+      "<button class='btn' onclick='checkTeacher()'>驗證並查看班級</button>" +
+      "<div id='tMsg' style='margin-top:10px;font-size:13px'></div>";
+  } else {
+    if(!adminUnlocked){
+      box.innerHTML =
+        "<h3>平台管理（僅限管理員）</h3>" +
+        "<label>管理員密鑰</label><input id='aKey' type='password' placeholder='輸入管理員密鑰'>" +
+        "<button class='btn' onclick='unlockAdmin()'>解鎖</button>" +
+        "<div id='aMsg' style='margin-top:10px;font-size:13px;color:#b91c1c'></div>";
+    } else {
+      box.innerHTML =
+        "<h3>平台管理後台</h3>" +
+        "<label>新增教師資格申請</label><input id='newT' placeholder='輸入新教師姓名'>" +
+        "<button class='btn' onclick='addTeacher()'>送出申請</button>" +
+        "<button class='btn btn-gray' onclick='adminUnlocked=false;draw()'>鎖定</button>" +
+        "<div id='aList' style='margin-top:12px;font-size:13px'>載入中...</div>";
+      loadAdmin();
+    }
+  }
+}
 
-        async function saveLog(qTxt, ansTxt, ok, errC, hLv) {
-          if (!st.name.trim()) return;
-          try {
-            await api("answer_logs", "POST", null, [{
-              student_name: st.name.trim(),
-              class_code: st.code.trim() || "MATH2026",
-              module_id: st.modId,
-              stage: st.stage,
-              prompt_text: qTxt,
-              student_answer: ansTxt,
-              is_correct: ok,
-              error_code: errC || null,
-              hint_level: hLv || null
-            }]);
-          } catch (e) { st.msg = "紀錄寫入失敗：" + e.message; }
-        }
+function submitAns(){
+  var name = document.getElementById("sName").value.trim();
+  var ans = document.getElementById("sAns").value.trim();
+  var msg = document.getElementById("sMsg");
+  if(!name){ msg.textContent = "請先輸入學生姓名"; return; }
+  var ok = (ans === "17");
+  msg.textContent = ok ? "答對了（17）！正在寫入雲端..." : "提示：2^3 = 8，(-3)^2 = 9，相加是多少？正在記錄作答...";
+  req("answer_logs", "POST", null, [{
+    student_name: name, class_code: "MATH2026", module_id: "M1-01",
+    stage: 4, prompt_text: "2^3 + (-3)^2", student_answer: ans, is_correct: ok
+  }]).then(function(){
+    return req("student_progress", "POST", null, [{
+      id: "MATH2026_" + name + "_M1-01", student_name: name, class_code: "MATH2026",
+      module_id: "M1-01", current_stage: ok ? 6 : 4, mastery_level: ok ? "L4" : "L2",
+      updated_at: new Date().toISOString()
+    }]);
+  }).then(function(r){
+    msg.textContent = r.ok ? "已同步至雲端！" : ("寫入失敗：" + r.text);
+  });
+}
 
-        function render() {
-          try {
-            var app = document.getElementById("app");
-            var m = MODS[st.modId];
-            var h = "";
+function checkTeacher(){
+  var tn = document.getElementById("tName").value.trim();
+  var tMsg = document.getElementById("tMsg");
+  if(!tn){ tMsg.textContent = "請輸入教師姓名"; return; }
+  tMsg.textContent = "驗證中...";
+  req("teacher_applications", "GET", "teacher_name=eq." + encodeURIComponent(tn) + "&order=created_at.desc&limit=1")
+    .then(function(r){
+      var list = r.ok && r.text ? JSON.parse(r.text) : [];
+      if(!list.length || list[0].status !== "approved"){
+        tMsg.innerHTML = "<span style='color:#b91c1c'>此姓名尚未通過管理員核准，無法查看班級資料。</span>";
+        return;
+      }
+      req("student_progress", "GET", "order=updated_at.desc&limit=20").then(function(pr){
+        var rows = pr.ok && pr.text ? JSON.parse(pr.text) : [];
+        tMsg.innerHTML = "<strong>已核准教師：" + tn + "</strong><br>" +
+          (rows.length ? rows.map(function(x){ return "• " + x.student_name + "（" + x.module_id + "・階段" + x.current_stage + "・" + x.mastery_level + "）"; }).join("<br>") : "尚無學生紀錄");
+      });
+    });
+}
 
-            if (st.role === "student") {
-              h += '<div class="card">' +
-                '<label>學生姓名</label><input id="i-name" type="text" value="' + st.name.replace(/"/g, "&quot;") + '" placeholder="輸入姓名（如：陳小華）" />' +
-                '<label>班級邀請碼</label><input id="i-code" type="text" value="' + st.code.replace(/"/g, "&quot;") + '" />' +
-                '<div class="row" style="justify-content:flex-start;">' +
-                '<button id="b-m1" class="btn ' + (st.modId === "M1-01" ? "" : "btn-soft") + '">M1-01 正整數指數</button>' +
-                '<button id="b-m2" class="btn ' + (st.modId === "M1-02" ? "" : "btn-soft") + '">M1-02 零指數</button>' +
-                '</div>' +
-                (st.msg ? '<div class="box good">' + st.msg + '</div>' : '') +
-                '</div>';
+function unlockAdmin(){
+  var k = document.getElementById("aKey").value.trim();
+  if(k === ADMIN_KEY){ adminUnlocked = true; draw(); }
+  else { document.getElementById("aMsg").textContent = "密鑰錯誤"; }
+}
 
-              h += '<div class="card"><div style="font-size:12px;color:#047857;font-weight:700;">' + m.title + '・階段 ' + st.stage + ' / 6' + (st.stage > 1 ? '（教材已鎖定）' : '') + '</div>';
-              if (st.stage === 1) {
-                h += '<div class="box" style="white-space:pre-line;">' + m.teach + '</div>' +
-                  '<button id="b-s1" class="btn">完成教材，進入階段二（不可回看）</button>';
-              } else if (st.stage >= 2 && st.stage <= 5) {
-                var q = st.stage === 2 ? m.guide : st.stage === 3 ? m.checkQ : st.stage === 4 ? m.pracQ : m.remQ;
-                h += '<div class="box" style="white-space:pre-line;font-weight:600;">' + q + '</div>' +
-                  '<input id="i-ans" type="text" placeholder="請輸入回答或答案" />' +
-                  '<button id="b-ans" class="btn">送出作答</button>';
-              } else {
-                var lv = st.hadErr ? "L3" : "L4";
-                h += '<div class="box good">單元完成！精熟等級：<strong>' + lv + '</strong>（已建立第 2 天與第 7 天複習排程）</div>' +
-                  '<button id="b-re" class="btn btn-soft">重新測試本單元</button>';
-              }
-              h += '</div>';
-            } else if (st.role === "teacher") {
-              h += '<div class="card"><h2 style="margin:0 0 6px;font-size:16px;">教師班級專區（限已核准教師）</h2>' +
-                '<label>核准教師姓名</label><input id="i-tname" type="text" value="' + st.tName.replace(/"/g, "&quot;") + '" placeholder="輸入已核准的教師姓名" />' +
-                '<button id="b-tver" class="btn">驗證並讀取班級</button>' +
-                '<div id="t-out" class="box">請輸入已核准教師姓名並按驗證。</div></div>';
-            } else {
-              if (!st.adminOk) {
-                h += '<div class="card"><h2 style="margin:0 0 6px;font-size:16px;">平台管理後台（僅限管理員）</h2>' +
-                  '<label>管理員密鑰</label><input id="i-akey" type="password" placeholder="請輸入管理員密鑰" />' +
-                  '<button id="b-aun" class="btn">解鎖管理後台</button>' +
-                  (st.msg ? '<div class="box hint">' + st.msg + '</div>' : '') + '</div>';
-              } else {
-                h += '<div class="card"><div class="row"><strong style="color:#064e3b;">平台管理後台（已解鎖）</strong>' +
-                  '<button id="b-alk" class="btn btn-soft">鎖定</button></div>' +
-                  '<label style="margin-top:10px;">新增教師資格申請</label>' +
-                  '<div class="row" style="justify-content:flex-start;"><input id="i-at" type="text" placeholder="輸入教師姓名" style="max-width:260px;margin:0;" />' +
-                  '<button id="b-at" class="btn">送出申請</button></div>' +
-                  '<div id="a-out" class="box">載入中...</div></div>';
-              }
-            }
+function addTeacher(){
+  var nt = document.getElementById("newT").value.trim();
+  if(!nt) return;
+  req("teacher_applications", "POST", null, [{ teacher_name: nt, subject: "高中數學", status: "pending" }])
+    .then(function(){ return req("audit_logs", "POST", null, [{ action: "APPLY_TEACHER", target_info: nt }]); })
+    .then(function(){ loadAdmin(); });
+}
 
-            app.innerHTML = h;
-            bind();
-          } catch (e) { window.__showErr("Render: " + e.message); }
-        }
+function loadAdmin(){
+  var aList = document.getElementById("aList");
+  req("teacher_applications", "GET", "order=created_at.desc&limit=20").then(function(r){
+    var apps = r.ok && r.text ? JSON.parse(r.text) : [];
+    aList.innerHTML = "<strong>教師申請列表</strong><br>" + (apps.length ? apps.map(function(a){
+      var btns = a.status === "pending"
+        ? " <button class='btn' style='padding:4px 8px;font-size:11px' onclick='decide(" + a.id + ",\"approved\")'>核准</button>" +
+          " <button class='btn btn-gray' style='padding:4px 8px;font-size:11px' onclick='decide(" + a.id + ",\"rejected\")'>拒絕</button>"
+        : "";
+      return "<div style='padding:6px 0;border-bottom:1px solid #eee'>" + a.teacher_name + "（" + a.status + "）" + btns + "</div>";
+    }).join("") : "尚無申請");
+  });
+}
 
-        function bind() {
-          var iname = document.getElementById("i-name");
-          if (iname) iname.addEventListener("input", function (e) { st.name = e.target.value; localStorage.setItem("edu_student_name", st.name); });
-          var icode = document.getElementById("i-code");
-          if (icode) icode.addEventListener("input", function (e) { st.code = e.target.value; localStorage.setItem("edu_class_code", st.code); });
-          var bm1 = document.getElementById("b-m1");
-          var bm2 = document.getElementById("b-m2");
-          if (bm1) bm1.addEventListener("click", function () { st.modId = "M1-01"; st.stage = 1; st.tries = 0; st.hadErr = false; st.msg = ""; render(); });
-          if (bm2) bm2.addEventListener("click", function () { st.modId = "M1-02"; st.stage = 1; st.tries = 0; st.hadErr = false; st.msg = ""; render(); });
+function decide(id, st){
+  req("teacher_applications", "PATCH", "id=eq." + id, { status: st })
+    .then(function(){ return req("audit_logs", "POST", null, [{ action: "TEACHER_" + st.toUpperCase(), target_info: "id=" + id }]); })
+    .then(function(){ loadAdmin(); });
+}
 
-          var bs1 = document.getElementById("b-s1");
-          if (bs1) bs1.addEventListener("click", async function () {
-            if (!st.name.trim()) { st.msg = "請先輸入學生姓名"; render(); return; }
-            st.stage = 2; st.tries = 0; render();
-            await saveProg(2, "L1");
-          });
-
-          var bans = document.getElementById("b-ans");
-          if (bans) bans.addEventListener("click", async function () {
-            if (!st.name.trim()) { st.msg = "請先輸入學生姓名"; render(); return; }
-            var v = document.getElementById("i-ans").value.trim();
-            if (!v) return;
-            var m = MODS[st.modId];
-            st.tries += 1;
-            var hLv = ["H1", "H2", "H3", "H4"][Math.min(st.tries - 1, 3)];
-            if (st.stage === 2) {
-              var ok2 = m.kw.some(function (k) { return v.toLowerCase().indexOf(k.toLowerCase()) !== -1; });
-              await saveLog(m.guide, v, ok2, ok2 ? null : "E01", ok2 ? null : hLv);
-              if (ok2) { st.stage = 3; st.tries = 0; st.msg = "引導通過，進入階段三"; render(); await saveProg(3, "L2"); }
-              else { st.hadErr = true; st.msg = "[" + hLv + "] " + m.hints[hLv]; render(); }
-            } else if (st.stage === 3) {
-              var ok3 = v.toUpperCase() === m.checkA;
-              await saveLog(m.checkQ, v, ok3, ok3 ? null : "E03", ok3 ? null : hLv);
-              if (ok3) { st.stage = 4; st.tries = 0; st.msg = "理解檢查通過，進入階段四"; render(); await saveProg(4, "L2"); }
-              else { st.hadErr = true; st.msg = "[" + hLv + "] " + m.hints[hLv]; render(); }
-            } else if (st.stage === 4) {
-              var ok4 = v === m.pracA;
-              await saveLog(m.pracQ, v, ok4, ok4 ? null : "E04", ok4 ? null : hLv);
-              if (ok4) {
-                if (st.hadErr) { st.stage = 5; st.tries = 0; st.msg = "進入階段五：補救確認"; render(); await saveProg(5, "L3"); }
-                else { st.stage = 6; st.msg = "完成單元"; render(); await saveProg(6, "L4"); }
-              } else { st.hadErr = true; st.msg = "[" + hLv + "] " + m.hints[hLv]; render(); }
-            } else if (st.stage === 5) {
-              var ok5 = v === m.remA;
-              await saveLog(m.remQ, v, ok5, ok5 ? null : "E04", ok5 ? null : "H3");
-              if (ok5) { st.stage = 6; st.msg = "補救通過，完成單元"; render(); await saveProg(6, "L3"); }
-              else { st.msg = "再算一次，注意正負號與零指數。"; render(); }
-            }
-          });
-
-          var bre = document.getElementById("b-re");
-          if (bre) bre.addEventListener("click", function () { st.stage = 1; st.tries = 0; st.hadErr = false; st.msg = ""; render(); });
-
-          var itn = document.getElementById("i-tname");
-          if (itn) itn.addEventListener("input", function (e) { st.tName = e.target.value; localStorage.setItem("edu_teacher_name", st.tName); });
-          var btver = document.getElementById("b-tver");
-          if (btver) btver.addEventListener("click", async function () {
-            var out = document.getElementById("t-out");
-            var tn = (st.tName || "").trim();
-            if (!tn) { out.textContent = "請先輸入教師姓名。"; return; }
-            var apps = await api("teacher_applications", "GET", "teacher_name=eq." + encodeURIComponent(tn) + "&order=created_at.desc&limit=1");
-            if (!apps || !apps.length || apps[0].status !== "approved") {
-              st.tOk = false;
-              out.textContent = "此姓名尚未通過管理員核准，無法查看班級資料。";
-              return;
-            }
-            st.tOk = true;
-            var progs = await api("student_progress", "GET", "order=updated_at.desc&limit=30");
-            var logs = await api("answer_logs", "GET", "order=created_at.desc&limit=30");
-            out.innerHTML = "<strong>已核准教師：" + tn + "</strong><br>學生進度：" + (progs && progs.length ? progs.map(function (p) { return "<br>• " + p.student_name + "（" + p.module_id + "・階段" + p.current_stage + "・" + p.mastery_level + "）"; }).join("") : "尚無") +
-              "<br><br>作答紀錄：" + (logs && logs.length ? logs.map(function (l) { return "<br>• " + l.student_name + "：" + l.student_answer + (l.is_correct ? "（正確）" : "（錯誤 " + (l.error_code || "") + "）"); }).join("") : "尚無");
-          });
-
-          var baun = document.getElementById("b-aun");
-          if (baun) baun.addEventListener("click", function () {
-            var k = document.getElementById("i-akey").value.trim();
-            if (k === ADMIN_KEY) { st.adminOk = true; sessionStorage.setItem("edu_admin_ok", "1"); st.msg = ""; render(); loadAdmin(); }
-            else { st.msg = "管理員密鑰錯誤。"; render(); }
-          });
-          var balk = document.getElementById("b-alk");
-          if (balk) balk.addEventListener("click", function () { st.adminOk = false; sessionStorage.removeItem("edu_admin_ok"); render(); });
-
-          var bat = document.getElementById("b-at");
-          if (bat) bat.addEventListener("click", async function () {
-            var tn = document.getElementById("i-at").value.trim();
-            if (!tn) return;
-            await api("teacher_applications", "POST", null, [{ teacher_name: tn, status: "pending" }]);
-            await api("audit_logs", "POST", null, [{ action: "APPLY_TEACHER", target_info: tn }]);
-            loadAdmin();
-          });
-        }
-
-        async function loadAdmin() {
-          var out = document.getElementById("a-out");
-          if (!out || !st.adminOk) return;
-          var apps = await api("teacher_applications", "GET", "order=created_at.desc&limit=30");
-          var progs = await api("student_progress", "GET", "order=updated_at.desc&limit=30");
-          out.innerHTML = "<strong>教師申請列表</strong><br>" + (apps && apps.length ? apps.map(function (a) {
-            return '<div style="padding:6px 0;border-bottom:1px solid #e2e8f0;">' + a.teacher_name + '（' + a.status + '）' +
-              (a.status === "pending" ? ' <button class="btn b-ap" data-id="' + a.id + '" data-st="approved" style="padding:4px 8px;font-size:11px;">核准</button>' +
-              ' <button class="btn btn-danger b-ap" data-id="' + a.id + '" data-st="rejected" style="padding:4px 8px;font-size:11px;">拒絕</button>' : '') + '</div>';
-          }).join("") : "尚無申請") +
-          "<br><strong>學生進度重設</strong><br>" + (progs && progs.length ? progs.map(function (p) {
-            return '<div style="padding:6px 0;border-bottom:1px solid #e2e8f0;">' + p.student_name + '（' + p.module_id + '・階段' + p.current_stage + '）' +
-              ' <button class="btn btn-warn b-rs" data-id="' + p.id + '" data-n="' + p.student_name + '" style="padding:4px 8px;font-size:11px;">重設第1階段</button></div>';
-          }).join("") : "尚無進度");
-
-          document.querySelectorAll(".b-ap").forEach(function (b) {
-            b.addEventListener("click", async function () {
-              var id = b.getAttribute("data-id"); var s = b.getAttribute("data-st");
-              await api("teacher_applications", "PATCH", "id=eq." + encodeURIComponent(id), { status: s });
-              await api("audit_logs", "POST", null, [{ action: "TEACHER_" + s.toUpperCase(), target_info: "id=" + id }]);
-              loadAdmin();
-            });
-          });
-          document.querySelectorAll(".b-rs").forEach(function (b) {
-            b.addEventListener("click", async function () {
-              var id = b.getAttribute("data-id"); var n = b.getAttribute("data-n");
-              await api("student_progress", "PATCH", "id=eq." + encodeURIComponent(id), { current_stage: 1, mastery_level: "L1", need_remedial: false });
-              await api("audit_logs", "POST", null, [{ action: "RESET_PROGRESS", target_info: n }]);
-              loadAdmin();
-            });
-          });
-        }
-
-        function tab(r, el) {
-          st.role = r; st.msg = "";
-          document.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
-          el.classList.add("active");
-          render();
-          if (r === "admin" && st.adminOk) loadAdmin();
-        }
-
-        document.getElementById("tab-student").addEventListener("click", func
+draw();
+</script>
+</body>
+</html>
