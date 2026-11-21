@@ -58,6 +58,7 @@
         border-radius: 12px;
         font-size: 12px;
         white-space: pre-wrap;
+        word-break: break-word;
         margin-bottom: 12px;
       }
     </style>
@@ -67,7 +68,7 @@
       <div style="max-width:860px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;">
         <div>
           <strong style="color:#064e3b;">AI 個人化教育平台</strong>
-          <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#78350f;margin-left:6px;">測試上線中</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#78350f;margin-left:6px;">雲端診斷版</span>
         </div>
         <div style="display:flex;gap:6px;">
           <button id="go-student" class="btn">學生學習</button>
@@ -83,7 +84,7 @@
         <p style="margin:0 0 8px;font-size:14px;">a^n 代表 n 個 a 連續相乘，例如 2^3 = 2 × 2 × 2 = 8。</p>
         <input id="stu-name" type="text" placeholder="輸入你的姓名（例如：陳小華）" />
         <button id="start-btn" class="btn">開始作答練習</button>
-        <div id="status-msg" style="margin-top:10px;font-size:12px;color:#047857;"></div>
+        <div id="status-msg" style="margin-top:10px;font-size:12px;color:#047857;white-space:pre-wrap;"></div>
       </div>
     </main>
 
@@ -123,13 +124,14 @@
                 updated_at: new Date().toISOString()
               }])
             });
+            var text = await resp.text();
             if (!resp.ok) {
-              var t = await resp.text();
-              throw new Error(t || ("HTTP " + resp.status));
+              throw new Error("HTTP " + resp.status + " -> " + text);
             }
             if (statusEl) statusEl.textContent = "已同步進度至 Supabase（學生：" + name + "，階段 " + stageNum + "）";
           } catch (e) {
-            if (statusEl) statusEl.textContent = "雲端同步提示：" + e.message;
+            if (statusEl) statusEl.textContent = "寫入失敗：" + e.message;
+            showErr("寫入 student_progress 失敗：\n" + e.message);
           }
         }
 
@@ -145,7 +147,7 @@
             '<p style="margin:0 0 10px;font-size:14px;">你好，<strong>' + nameVal + '</strong>！請計算 2^3 + (-3)^2 的值是多少？</p>' +
             '<input id="ans-inp" type="text" placeholder="輸入答案（例如：17）" />' +
             '<button id="ans-btn" class="btn">送出答案並寫入雲端</button>' +
-            '<div id="status-msg" style="margin-top:10px;font-size:12px;color:#047857;"></div>';
+            '<div id="status-msg" style="margin-top:10px;font-size:12px;color:#047857;white-space:pre-wrap;"></div>';
 
           writeProgress(nameVal, 2);
 
@@ -154,7 +156,7 @@
             var st = document.getElementById("status-msg");
             if (ans === "17") {
               st.textContent = "回答正確（17）！正在寫入作答紀錄...";
-              await fetch(SUPABASE_URL + "/rest/v1/answer_logs", {
+              var logResp = await fetch(SUPABASE_URL + "/rest/v1/answer_logs", {
                 method: "POST",
                 headers: {
                   "apikey": SUPABASE_KEY,
@@ -171,6 +173,11 @@
                   is_correct: true
                 }])
               });
+              var logText = await logResp.text();
+              if (!logResp.ok) {
+                showErr("寫入 answer_logs 失敗：\nHTTP " + logResp.status + " -> " + logText);
+                return;
+              }
               await writeProgress(nameVal, 6);
               st.textContent = "太棒了！作答與進度都已成功寫入 Supabase！";
             } else {
@@ -193,9 +200,15 @@
                 }
               }
             );
-            var rows = await resp.json();
+            var raw = await resp.text();
+            if (!resp.ok) {
+              throw new Error("HTTP " + resp.status + " -> " + raw);
+            }
+            var rows = raw ? JSON.parse(raw) : [];
             if (!Array.isArray(rows) || rows.length === 0) {
-              appEl.innerHTML = '<h2 style="margin:0 0 8px;font-size:16px;color:#064e3b;">教師班級紀錄</h2><p style="font-size:13px;color:#64748b;">目前雲端尚無學生進度資料。</p>';
+              appEl.innerHTML =
+                '<h2 style="margin:0 0 8px;font-size:16px;color:#064e3b;">教師班級紀錄</h2>' +
+                '<p style="font-size:13px;color:#64748b;">連線成功（HTTP 200），但目前雲端資料表內尚無資料。請先切回「學生學習」輸入姓名並送出作答。</p>';
               return;
             }
             appEl.innerHTML =
@@ -206,7 +219,8 @@
                   ' — 階段 ' + (r.current_stage || 1) + '（' + (r.mastery_level || "L1") + '）</div>';
               }).join("");
           } catch (e) {
-            showErr("讀取教師資料失敗：" + e.message);
+            appEl.innerHTML = '<h2 style="margin:0 0 8px;font-size:16px;color:#881337;">讀取失敗</h2><p style="font-size:13px;">請查看上方紅框錯誤原因。</p>';
+            showErr("讀取 student_progress 失敗：\n" + e.message);
           }
         });
 
