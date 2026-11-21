@@ -8,7 +8,7 @@
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        padding: 0 0 56px;
+        padding: 0 0 48px;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
         background: #f7f9f5;
         color: #1e293b;
@@ -22,7 +22,7 @@
         z-index: 20;
       }
       .wrap {
-        max-width: 880px;
+        max-width: 860px;
         margin: 0 auto;
         padding: 12px 16px;
       }
@@ -32,21 +32,6 @@
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-      }
-      .brand {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 700;
-        color: #064e3b;
-      }
-      .badge-warn {
-        font-size: 11px;
-        padding: 2px 8px;
-        border-radius: 999px;
-        background: #fef3c7;
-        color: #78350f;
-        font-weight: 600;
       }
       .tabs {
         display: flex;
@@ -74,64 +59,7 @@
         border: 1px solid #d1fae5;
         border-radius: 16px;
         padding: 16px;
-        margin-bottom: 16px;
-      }
-      .grid-2 {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-        gap: 10px;
-      }
-      .grid-3 {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 12px;
-      }
-      .grid-5 {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
-        gap: 8px;
-      }
-      .stages-bar {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
-        margin: 12px 0;
-      }
-      @media (min-width: 640px) {
-        .stages-bar { grid-template-columns: repeat(6, 1fr); }
-      }
-      .stage-pill {
-        padding: 6px;
-        border-radius: 8px;
-        font-size: 11px;
-        font-weight: 600;
-        text-align: center;
-        border: 1px solid #e2e8f0;
-        background: #ffffff;
-        color: #64748b;
-      }
-      .stage-pill.current {
-        background: #047857;
-        color: #ffffff;
-        border-color: #047857;
-      }
-      .stage-pill.locked {
-        background: #f1f5f9;
-        color: #94a3b8;
-      }
-      label {
-        display: block;
-        font-size: 12px;
-        font-weight: 600;
-        color: #475569;
-        margin-bottom: 4px;
-      }
-      input[type="text"] {
-        width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #cbd5e1;
-        border-radius: 10px;
-        font-size: 14px;
+        margin-bottom: 14px;
       }
       .btn {
         border: 0;
@@ -140,94 +68,22 @@
         font-size: 13px;
         font-weight: 700;
         cursor: pointer;
-      }
-      .btn-primary {
         background: #047857;
         color: #ffffff;
       }
-      .btn-primary:hover { background: #065f46; }
       .btn-soft {
         background: #ecfdf5;
         color: #065f46;
         border: 1px solid #a7f3d0;
       }
-      .btn-warn {
-        background: #fffbeb;
-        color: #78350f;
-        border: 1px solid #fde68a;
-      }
-      .btn-danger {
-        background: #e11d48;
-        color: #ffffff;
-      }
-      .mod-card {
-        text-align: left;
-        padding: 12px;
-        border-radius: 12px;
-        border: 1px solid #a7f3d0;
-        background: #f0fdf4;
-        cursor: pointer;
+      input[type="text"] {
         width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        font-size: 14px;
+        margin: 6px 0 10px;
       }
-      .mod-card.selected {
-        background: #065f46;
-        color: #ffffff;
-        border-color: #065f46;
-      }
-      .mod-card.disabled {
-        background: #f8fafc;
-        color: #94a3b8;
-        border-color: #f1f5f9;
-        cursor: not-allowed;
-      }
-      .box-soft {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 12px;
-      }
-      .box-good {
-        background: #ecfdf5;
-        border: 1px solid #a7f3d0;
-        color: #064e3b;
-        border-radius: 12px;
-        padding: 12px;
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .box-hint {
-        background: #fffbeb;
-        border: 1px solid #fde68a;
-        color: #78350f;
-        border-radius: 12px;
-        padding: 12px;
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .box-err {
-        background: #fff1f2;
-        border: 1px solid #fecdd3;
-        color: #881337;
-        border-radius: 12px;
-        padding: 12px;
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .row-item {
-        padding: 10px 0;
-        border-bottom: 1px solid #f1f5f9;
-        font-size: 13px;
-      }
-      .row-item:last-child { border-bottom: 0; }
-      .pill {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 6px;
-        font-size: 11px;
-        font-weight: 700;
-      }
-      .pill-ok { background: #dcfce7; color: #166534; }
-      .pill-err { background: #fef3c7; color: #92400e; }
       #err-box {
         display: none;
         margin: 12px 0;
@@ -241,13 +97,28 @@
         word-break: break-word;
       }
     </style>
+    <script>
+      window.__showErr = function (msg) {
+        var box = document.getElementById("err-box");
+        if (!box) return;
+        box.style.display = "block";
+        box.textContent += (box.textContent ? "\n\n" : "") + msg;
+      };
+      window.onerror = function (message, source, lineno) {
+        window.__showErr("Error: " + message + (lineno ? " (Line " + lineno + ")" : ""));
+      };
+      window.addEventListener("unhandledrejection", function (e) {
+        var r = e.reason;
+        window.__showErr("Promise Error: " + ((r && r.message) || r || "未知錯誤"));
+      });
+    </script>
   </head>
   <body>
     <header>
       <div class="wrap header-inner">
-        <div class="brand">
+        <div style="display:flex;align-items:center;gap:8px;font-weight:700;color:#064e3b;">
           <span>AI 個人化教育平台</span>
-          <span class="badge-warn">規則式教學測試模式</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#78350f;">規則式教學測試模式</span>
         </div>
         <div class="tabs">
           <button id="tab-student" class="tab-btn active">學生學習</button>
@@ -259,7 +130,7 @@
 
     <main class="wrap">
       <div id="err-box"></div>
-      <div id="app">正在載入學習平台...</div>
+      <div id="app" class="card">正在啟動平台...</div>
     </main>
 
     <script>
@@ -267,330 +138,250 @@
         var SUPABASE_URL = "https://antfbdsqrznnssdvpzcn.supabase.co";
         var SUPABASE_KEY = "sb_publishable_z7l4i49w93dZ0yrR5SPbVw_ShVGKm0J";
 
-        var errBox = document.getElementById("err-box");
-        function showErr(msg) {
-          if (!errBox) return;
-          errBox.style.display = "block";
-          errBox.textContent = msg;
-        }
-        function clearErr() {
-          if (!errBox) return;
-          errBox.style.display = "none";
-          errBox.textContent = "";
-        }
-
-        window.onerror = function (message, source, lineno) {
-          showErr("Error: " + message + (lineno ? " (Line " + lineno + ")" : ""));
+        var MODULES = {
+          "M1-01": {
+            title: "M1-01 正整數指數",
+            guide: "為什麼 (-2)^3 是負數，但 (-2)^4 是正數？",
+            kw: ["奇數", "偶數", "負", "正", "-8", "16"],
+            checkPrompt: "下列哪一個與 -5^2 相等？（輸入 A、B 或 C）\nA. (-5)^2\nB. -(5 × 5)\nC. (-5) × 2",
+            checkAns: "B",
+            practicePrompt: "請計算：2^3 + (-3)^2 的值是多少？",
+            practiceAns: "17",
+            remedialPrompt: "【補救確認題】請計算 (-2)^3 + 3^2 的值是多少？",
+            remedialAns: "1"
+          },
+          "M1-02": {
+            title: "M1-02 零指數",
+            guide: "為什麼非零實數的 0 次方等於 1（例如 8^0 = 1）？",
+            kw: ["除", "自己", "1", "8÷8", "8/8", "規律"],
+            checkPrompt: "若 (x - 3)^0 = 1 成立，x 必須滿足什麼條件？（輸入 A、B 或 C）\nA. 任意實數\nB. x ≠ 3\nC. x > 3",
+            checkAns: "B",
+            practicePrompt: "請計算：(-6)^0 + 2^3 - 5^0 的值是多少？",
+            practiceAns: "8",
+            remedialPrompt: "【補救確認題】請計算 10^0 + (-2)^0 + 3^1 的值是多少？",
+            remedialAns: "5"
+          }
         };
-        window.addEventListener("unhandledrejection", function (e) {
-          var r = e.reason;
-          showErr("Promise Error: " + ((r && r.message) || r || "未知錯誤"));
-        });
 
-        async function sbRequest(table, method, queryStr, bodyObj) {
-          var url = SUPABASE_URL + "/rest/v1/" + table + (queryStr ? "?" + queryStr : "");
+        var state = {
+          role: "student",
+          name: localStorage.getItem("edu_student_name") || "",
+          code: localStorage.getItem("edu_class_code") || "MATH2026",
+          modId: "M1-01",
+          stage: 1,
+          attempts: 0,
+          hadErr: false,
+          msg: ""
+        };
+
+        async function api(table, method, query, body) {
+          var url = SUPABASE_URL + "/rest/v1/" + table + (query ? "?" + query : "");
           var headers = {
             "apikey": SUPABASE_KEY,
             "Authorization": "Bearer " + SUPABASE_KEY,
             "Content-Type": "application/json"
           };
-          if (method === "POST") {
-            headers["Prefer"] = "resolution=merge-duplicates,return=representation";
-          } else if (method === "PATCH") {
-            headers["Prefer"] = "return=representation";
-          }
-          var resp = await fetch(url, {
+          if (method === "POST") headers["Prefer"] = "resolution=merge-duplicates,return=representation";
+          if (method === "PATCH") headers["Prefer"] = "return=representation";
+          var res = await fetch(url, {
             method: method || "GET",
             headers: headers,
-            body: bodyObj ? JSON.stringify(bodyObj) : undefined
+            body: body ? JSON.stringify(body) : undefined
           });
-          var text = await resp.text();
-          var data = null;
-          try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
-          if (!resp.ok) {
-            throw new Error((data && data.message) || text || ("HTTP " + resp.status));
-          }
-          return data;
+          var txt = await res.text();
+          if (!res.ok) throw new Error("HTTP " + res.status + " " + txt);
+          return txt ? JSON.parse(txt) : null;
         }
 
-        var ERROR_CODES = {
-          E01: "E01 定義理解錯誤",
-          E02: "E02 性質或公式使用錯誤",
-          E03: "E03 忽略必要條件",
-          E04: "E04 運算錯誤",
-          E05: "E05 推理跳步或因果混淆",
-          E06: "E06 題意理解或作答不完整",
-          E07: "E07 跨題型或情境轉換困難"
-        };
-
-        var COURSE_CATALOG = [
-          { id: "M0", title: "M0 先備知識", status: "coming_soon", desc: "整數、分數、根式、次方、方程式" },
-          { id: "M1-01", title: "M1-01 正整數指數", status: "ready", desc: "正整數次方的定義、直覺理解與基本運算" },
-          { id: "M1-02", title: "M1-02 零指數", status: "ready", desc: "非零實數的零次方定義、推導與條件限制" },
-          { id: "M2", title: "M2 指數律", status: "coming_soon", desc: "同底數相乘除、次方的次方、積的次方" },
-          { id: "M3", title: "M3 指數函數", status: "coming_soon", desc: "定義、圖形與單調性質" },
-          { id: "M4", title: "M4 對數基本概念", status: "coming_soon", desc: "對數定義及指數與對數轉換" },
-          { id: "M5", title: "M5 對數律", status: "coming_soon", desc: "對數加減與換底公式" },
-          { id: "M6", title: "M6 對數函數", status: "coming_soon", desc: "對數圖形與性質" },
-          { id: "M7", title: "M7 指數與對數應用", status: "coming_soon", desc: "半衰期、複利與震級應用" }
-        ];
-
-        var MODULE_DATA = {
-          "M1-01": {
-            id: "M1-01",
-            title: "正整數指數",
-            objectives: [
-              "理解 a^n 代表 n 個 a 連續相乘，而非 a × n",
-              "能正確辨識底數與指數，並計算正整數次方",
-              "注意負數加括號與不加括號的運算差異"
-            ],
-            intuition: "就像細胞每次分裂成 2 個，分裂 4 次後總數是 2 × 2 × 2 × 2。數學家為了不寫一長串乘號，發明了右上角的「指數」來記錄連乘了幾次。",
-            definition: "設 a 為任意實數，n 為正整數，則 a^n = a × a × ... × a（共 n 個 a 相乘）。其中 a 稱為底數，n 稱為指數。",
-            derivation: "觀察規律：3^1 = 3；3^2 = 3 × 3 = 9；3^3 = 3^2 × 3 = 27；每當指數增加 1，整體數值就再乘以一次底數 3。",
-            examples: [
-              "2^4 = 2 × 2 × 2 × 2 = 16",
-              "(-3)^2 = (-3) × (-3) = 9（括號表示連同負號一起平方）"
-            ],
-            counterExamples: [
-              "錯誤：2^4 = 2 × 4 = 8（指數是連乘次數，不是乘法）",
-              "注意：-3^2 = -(3 × 3) = -9，與 (-3)^2 = 9 不同"
-            ],
-            guided: {
-              prompt: "在進入正式題目之前，想請你用自己的話或算式回答：為什麼 (-2)^3 會是負數，但 (-2)^4 卻變成正數？",
-              keywords: ["奇數", "偶數", "負", "正", "-8", "16", "三個", "四個"],
-              hints: {
-                H1: "試著把 (-2)^3 和 (-2)^4 展開成連乘的樣子，數數看各有幾個負號。",
-                H2: "兩個負號相乘會變正（負負得正），那 3 個負號與 4 個負號相乘分別會剩下什麼符號？",
-                H3: "(-2)^3 = (-2)×(-2)×(-2) 有 3 個負號（奇數個）；(-2)^4 有 4 個負號（偶數個）。",
-                H4: "奇數個負數相乘結果為負（-8），偶數個負數相乘結果為正（+16）。輸入「奇數個負號為負，偶數個為正」即可過關！"
-              }
-            },
-            check: {
-              prompt: "【觀念辨識】下列哪一個算式的值與 -5^2 相等？（請輸入選項代號 A、B 或 C）\nA. (-5)^2\nB. -(5 × 5)\nC. (-5) × 2",
-              expected: "B",
-              hints: {
-                H1: "觀察負號有沒有被括號包起來，次方會優先作用在誰身上？",
-                H2: "沒有括號時，次方只作用在數字 5 上，負號留在最前面。",
-                H3: "-5^2 代表先算 5 的 2 次方，最後再加上負號，也就是 -(5 × 5)。",
-                H4: "正確答案是 B，因為 -5^2 = -(5 × 5) = -25，而 A 是 +25。"
-              }
-            },
-            practice: {
-              prompt: "請計算：2^3 + (-3)^2 的值是多少？",
-              expected: "17",
-              hints: {
-                H1: "把兩項分開計算：先算 2 的 3 次方，再算 (-3) 的 2 次方。",
-                H2: "2^3 = 2×2×2 = 8；(-3)^2 是兩個 -3 相乘。",
-                H3: "2^3 = 8，且 (-3)^2 = (-3)×(-3) = 9，接著把兩者相加。",
-                H4: "8 + 9 = 17，正確答案是 17。"
-              }
-            },
-            remedial: {
-              explanation: "補救重點：計算含負號的次方時，務必先看「括號」：(1) (-a)^n 代表連同負號一起連乘 n 次；(2) -a^n 代表先算 a^n 再加負號。",
-              prompt: "【補救確認題】請計算 (-2)^3 + 3^2 的值是多少？",
-              expected: "1"
-            }
-          },
-          "M1-02": {
-            id: "M1-02",
-            title: "零指數",
-            objectives: [
-              "理解為何在 a ≠ 0 時規定 a^0 = 1",
-              "能分辨 0^0 無意義的必要條件限制",
-              "能正確計算包含零指數的混合運算"
-            ],
-            intuition: "每次把次方減 1，就相當於除以一次底數。當 2^1 = 2 再除以 2，指數變成 0，數值剛好變成 2 ÷ 2 = 1。",
-            definition: "當底數 a ≠ 0 時，規定 a^0 = 1。若底數 a = 0，則 0^0 在數學上「不予定義（無意義）」。",
-            derivation: "由同底數相除指數相減：a^n ÷ a^n = a^(n-n) = a^0；另一方面，任何非零數除以自己都等於 1，因此必須規定 a^0 = 1（a ≠ 0）。",
-            examples: ["99^0 = 1", "(-4)^0 = 1"],
-            counterExamples: [
-              "錯誤：5^0 = 0（零次方不是乘以 0）",
-              "陷阱：0^0 無意義，不可寫成 1"
-            ],
-            guided: {
-              prompt: "如果有一位同學說：「因為 0 乘任何數都是 0，所以 8^0 應該等於 0」，你會怎麼用除法規律向他解釋為什麼 8^0 = 1？",
-              keywords: ["除", "自己", "1", "8÷8", "8/8", "規律", "減"],
-              hints: {
-                H1: "試著從 8^2 = 64、8^1 = 8 往下推，指數每少 1 要除以多少？",
-                H2: "8^1 除以 8 就會變成 8^0，那 8 除以 8 等於多少？",
-                H3: "因為 8^1 ÷ 8^1 = 8^(1-1) = 8^0，而 8 ÷ 8 = 1。",
-                H4: "輸入「8除以8等於1」或說明任何非零數除以自己為 1 即可過關！"
-              }
-            },
-            check: {
-              prompt: "【條件判斷】若 (x - 3)^0 = 1 成立，則 x 必須滿足什麼條件？（請輸入選項代號 A、B 或 C）\nA. x 可以是任意實數\nB. x ≠ 3\nC. x > 3",
-              expected: "B",
-              hints: {
-                H1: "回想零指數定義中的「必要條件」：底數不能等於多少？",
-                H2: "因為 0^0 無意義，所以底數 (x - 3) 不能變成 0。",
-                H3: "令 x - 3 ≠ 0，移項後就能得到 x 的限制條件。",
-                H4: "正確答案是 B（x ≠ 3），否則底數會變成 0。"
-              }
-            },
-            practice: {
-              prompt: "請計算：(-6)^0 + 2^3 - 5^0 的值是多少？",
-              expected: "8",
-              hints: {
-                H1: "先找出算式裡有哪幾個零次方，它們各自等於多少？",
-                H2: "(-6)^0 = 1，5^0 = 1，而 2^3 = 8。",
-                H3: "把算式代換成：1 + 8 - 1，再計算加減。",
-                H4: "1 + 8 - 1 = 8，正確答案是 8。"
-              }
-            },
-            remedial: {
-              explanation: "補救重點：只要底數不是 0，無論底數是正數、負數或分數，它的 0 次方一律等於 1（例如 (-6)^0 = 1）。",
-              prompt: "【補救確認題】請計算 10^0 + (-2)^0 + 3^1 的值是多少？",
-              expected: "5"
-            }
-          }
-        };
-
-        var STAGE_NAMES = [
-          "1. 教材學習",
-          "2. 引導問題",
-          "3. 理解檢查",
-          "4. 互動練習",
-          "5. 個人化補救",
-          "6. 學習總結"
-        ];
-
-        function escapeHtml(s) {
-          return String(s || "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-        }
-
-        function getFutureDateStr(days) {
-          var d = new Date();
-          d.setDate(d.getDate() + days);
-          return d.toISOString().slice(0, 10);
-        }
-
-        function diagnoseError(modId, stage, rawInput) {
-          var ans = String(rawInput || "").trim().toUpperCase();
-          if (!ans) return { code: "E06", name: ERROR_CODES.E06 };
-          if (stage === 2) {
-            if (ans.length < 3) return { code: "E06", name: ERROR_CODES.E06 };
-            return { code: "E05", name: ERROR_CODES.E05 };
-          }
-          if (modId === "M1-01") {
-            if (stage === 3 && ans === "A") return { code: "E03", name: ERROR_CODES.E03 };
-            if (stage === 3 && ans === "C") return { code: "E01", name: ERROR_CODES.E01 };
-            if (stage === 4 && (ans === "14" || ans === "0" || ans === "-1")) return { code: "E02", name: ERROR_CODES.E02 };
-          }
-          if (modId === "M1-02") {
-            if (stage === 3 && ans === "A") return { code: "E03", name: ERROR_CODES.E03 };
-            if (stage === 3 && ans === "C") return { code: "E07", name: ERROR_CODES.E07 };
-            if (stage === 4 && (ans === "7" || ans === "8" || ans === "2")) return { code: "E01", name: ERROR_CODES.E01 };
-          }
-          return { code: "E04", name: ERROR_CODES.E04 };
-        }
-
-        var state = {
-          role: "student",
-          studentName: localStorage.getItem("edu_student_name") || "",
-          classCode: localStorage.getItem("edu_class_code") || "MATH2026",
-          selectedModId: "M1-01",
-          stage: 1,
-          inputVal: "",
-          stageAttempts: 0,
-          hadErrors: false,
-          feedback: null,
-          showReflection: false,
-          lastErrorLogId: null,
-          syncNotice: "",
-          summaryData: null,
-          logs: [],
-          progressList: [],
-          teacherApps: [],
-          auditLogs: [],
-          newTeacherName: "",
-          loadingDash: false
-        };
-
-        async function saveProgressToDb(nextStage, mastery, extra) {
-          if (!state.studentName.trim()) return;
-          extra = extra || {};
-          var activeCode = state.classCode.trim() || "MATH2026";
-          var rowId = activeCode + "_" + state.studentName.trim() + "_" + state.selectedModId;
-          var payload = {
-            id: rowId,
-            student_name: state.studentName.trim(),
-            class_code: activeCode,
-            module_id: state.selectedModId,
-            current_stage: nextStage,
-            mastery_level: mastery || "L1",
-            need_remedial: extra.needRemedial !== undefined ? extra.needRemedial : state.hadErrors,
-            updated_at: new Date().toISOString()
-          };
-          if (extra.scores) payload.scores = extra.scores;
-          if (extra.day2) payload.review_day2 = extra.day2;
-          if (extra.day7) payload.review_day7 = extra.day7;
-
+        async function saveProg(stageNum, mastery) {
+          if (!state.name.trim()) return;
           try {
-            await sbRequest("student_progress", "POST", null, [payload]);
-            state.syncNotice = "學習進度已同步至雲端";
+            await api("student_progress", "POST", null, [{
+              id: (state.code.trim() || "MATH2026") + "_" + state.name.trim() + "_" + state.modId,
+              student_name: state.name.trim(),
+              class_code: state.code.trim() || "MATH2026",
+              module_id: state.modId,
+              current_stage: stageNum,
+              mastery_level: mastery || "L1",
+              need_remedial: state.hadErr,
+              updated_at: new Date().toISOString()
+            }]);
+            state.msg = "已同步至雲端（階段 " + stageNum + "）";
           } catch (e) {
-            state.syncNotice = "雲端同步異常：" + e.message;
+            state.msg = "同步失敗：" + e.message;
           }
           render();
         }
 
-        async function restoreStudentProgress() {
-          if (!state.studentName.trim()) return;
-          var activeCode = state.classCode.trim() || "MATH2026";
-          var rowId = activeCode + "_" + state.studentName.trim() + "_" + state.selectedModId;
+        async function saveLog(promptTxt, ansTxt, ok, errCode, hintLv) {
+          if (!state.name.trim()) return;
           try {
-            var rows = await sbRequest("student_progress", "GET", "id=eq." + encodeURIComponent(rowId) + "&select=*");
-            if (Array.isArray(rows) && rows.length > 0) {
-              var d = rows[0];
-              state.stage = d.current_stage || 1;
-              state.hadErrors = Boolean(d.need_remedial);
-              if (state.stage === 6) {
-                state.summaryData = {
-                  mastery: d.mastery_level || "L3",
-                  scores: d.scores || null,
-                  day2: d.review_day2 || getFutureDateStr(2),
-                  day7: d.review_day7 || getFutureDateStr(7)
-                };
-              }
-              state.syncNotice = "已從雲端恢復進度（目前位於第 " + state.stage + " 階段）";
-              render();
-            }
-          } catch (e) {
-            state.syncNotice = "讀取進度失敗：" + e.message;
-            render();
-          }
-        }
-
-        async function insertAnswerLog(opts) {
-          if (!state.studentName.trim()) return null;
-          try {
-            var inserted = await sbRequest("answer_logs", "POST", null, [{
-              student_name: state.studentName.trim(),
-              class_code: state.classCode.trim() || "MATH2026",
-              module_id: state.selectedModId,
+            await api("answer_logs", "POST", null, [{
+              student_name: state.name.trim(),
+              class_code: state.code.trim() || "MATH2026",
+              module_id: state.modId,
               stage: state.stage,
-              prompt_text: opts.promptText,
-              student_answer: opts.userAns,
-              is_correct: opts.isCorrect,
-              error_code: opts.errorCode || null,
-              hint_level: opts.hintLevel || null
+              prompt_text: promptTxt,
+              student_answer: ansTxt,
+              is_correct: ok,
+              error_code: errCode || null,
+              hint_level: hintLv || null
             }]);
-            return Array.isArray(inserted) && inserted[0] ? inserted[0].id : null;
           } catch (e) {
-            state.syncNotice = "作答紀錄寫入失敗：" + e.message;
-            render();
-            return null;
+            state.msg = "作答紀錄寫入失敗：" + e.message;
           }
         }
 
-        async function finalizeModule(masteryLevel) {
-          var scores = state.hadErrors
-            ? { concept: 75, calc: 80, logic: 75, transfer: 70, indep: 75 }
-            : { concept: 95, calc: 90, logic: 90, transfer: 85, indep: 95 };
-          var day2 = getFutureDateStr(2);
-          var day7 = getFutureDateStr(7);
-       
+        function render() {
+          try {
+            var app = document.getElementById("app");
+            var m = MODULES[state.modId];
+            var h = '<div class="card">' +
+              '<label>學生姓名</label><input id="f-name" type="text" value="' + state.name.replace(/"/g, "&quot;") + '" placeholder="輸入姓名（如：陳小華）" />' +
+              '<label>班級邀請碼</label><input id="f-code" type="text" value="' + state.code.replace(/"/g, "&quot;") + '" />' +
+              '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">' +
+              '<button id="m1" class="btn ' + (state.modId === "M1-01" ? "" : "btn-soft") + '">M1-01 正整數指數</button>' +
+              '<button id="m2" class="btn ' + (state.modId === "M1-02" ? "" : "btn-soft") + '">M1-02 零指數</button>' +
+              '</div>' +
+              (state.msg ? '<div style="margin-top:8px;font-size:12px;color:#047857;font-weight:600;">' + state.msg + '</div>' : '') +
+              '</div>';
+
+            if (state.role === "student") {
+              h += '<div class="card"><div style="font-size:12px;color:#047857;font-weight:700;">' + m.title + '・第 ' + state.stage + ' / 6 階段</div>';
+              if (state.stage === 1) {
+                h += '<p style="margin:8px 0 12px;">請先閱讀單元教材重點（進入下一階段後不可回看教材）。完成閱讀後按下方按鈕進入引導題。</p>' +
+                  '<button id="s1-go" class="btn">進入階段二：引導問題</button>';
+              } else if (state.stage === 2 || state.stage === 3 || state.stage === 4 || state.stage === 5) {
+                var qText = state.stage === 2 ? m.guide
+                  : state.stage === 3 ? m.checkPrompt
+                  : state.stage === 4 ? m.practicePrompt
+                  : m.remedialPrompt;
+                h += '<p style="white-space:pre-line;font-weight:600;margin:8px 0;">' + qText + '</p>' +
+                  '<input id="f-ans" type="text" placeholder="請輸入你的回答或答案" />' +
+                  '<button id="ans-go" class="btn">送出作答</button>';
+              } else {
+                var lv = state.hadErr ? "L3" : "L4";
+                h += '<h2 style="margin:8px 0;color:#064e3b;">單元學習完成！精熟等級：' + lv + '</h2>' +
+                  '<p style="font-size:13px;color:#475569;">已建立第 2 天與第 7 天間隔複習排程。</p>' +
+                  '<button id="restart-go" class="btn btn-soft">重新測試本單元</button>';
+              }
+              h += '</div>';
+            } else if (state.role === "teacher") {
+              h += '<div class="card"><h2 style="margin:0 0 8px;font-size:16px;">教師班級紀錄</h2><div id="t-list">正在讀取...</div></div>';
+            } else {
+              h += '<div class="card"><h2 style="margin:0 0 8px;font-size:16px;">平台管理與教師審核</h2>' +
+                '<input id="f-tname" type="text" placeholder="輸入新教師姓名提出申請" />' +
+                '<button id="t-apply" class="btn">送出申請</button><div id="a-list" style="margin-top:12px;"></div></div>';
+            }
+
+            app.innerHTML = h;
+            bind();
+          } catch (e) {
+            window.__showErr("Render Error: " + e.message);
+          }
+        }
+
+        function bind() {
+          var fn = document.getElementById("f-name");
+          if (fn) fn.addEventListener("input", function (e) { state.name = e.target.value; localStorage.setItem("edu_student_name", state.name); });
+          var fc = document.getElementById("f-code");
+          if (fc) fc.addEventListener("input", function (e) { state.code = e.target.value; localStorage.setItem("edu_class_code", state.code); });
+
+          var m1 = document.getElementById("m1");
+          var m2 = document.getElementById("m2");
+          if (m1) m1.addEventListener("click", function () { state.modId = "M1-01"; state.stage = 1; state.attempts = 0; state.hadErr = false; state.msg = ""; render(); });
+          if (m2) m2.addEventListener("click", function () { state.modId = "M1-02"; state.stage = 1; state.attempts = 0; state.hadErr = false; state.msg = ""; render(); });
+
+          var s1 = document.getElementById("s1-go");
+          if (s1) s1.addEventListener("click", async function () {
+            if (!state.name.trim()) { state.msg = "請先輸入學生姓名"; render(); return; }
+            state.stage = 2; state.attempts = 0; render();
+            await saveProg(2, "L1");
+          });
+
+          var ag = document.getElementById("ans-go");
+          if (ag) ag.addEventListener("click", async function () {
+            if (!state.name.trim()) { state.msg = "請先輸入學生姓名"; render(); return; }
+            var val = document.getElementById("f-ans").value.trim();
+            if (!val) return;
+            var m = MODULES[state.modId];
+            state.attempts += 1;
+            var hLv = ["H1", "H2", "H3", "H4"][Math.min(state.attempts - 1, 3)];
+
+            if (state.stage === 2) {
+              var ok2 = m.kw.some(function (k) { return val.toLowerCase().indexOf(k.toLowerCase()) !== -1; });
+              await saveLog(m.guide, val, ok2, ok2 ? null : "E01", ok2 ? null : hLv);
+              if (ok2) { state.stage = 3; state.attempts = 0; state.msg = "引導通過！"; render(); await saveProg(3, "L2"); }
+              else { state.hadErr = true; state.msg = "[" + hLv + "] 試著想想底數與正負號的關係。"; render(); }
+            } else if (state.stage === 3) {
+              var ok3 = val.toUpperCase() === m.checkAns;
+              await saveLog(m.checkPrompt, val, ok3, ok3 ? null : "E03", ok3 ? null : hLv);
+              if (ok3) { state.stage = 4; state.attempts = 0; state.msg = "理解檢查通過！"; render(); await saveProg(4, "L2"); }
+              else { state.hadErr = true; state.msg = "[" + hLv + "] 注意括號範圍與條件限制，正確選項是 " + m.checkAns + " 嗎？再試一次。"; render(); }
+            } else if (state.stage === 4) {
+              var ok4 = val === m.practiceAns;
+              await saveLog(m.practicePrompt, val, ok4, ok4 ? null : "E04", ok4 ? null : hLv);
+              if (ok4) {
+                if (state.hadErr) { state.stage = 5; state.attempts = 0; state.msg = "進入階段五：補救確認"; render(); await saveProg(5, "L3"); }
+                else { state.stage = 6; state.msg = "完成單元！"; render(); await saveProg(6, "L4"); }
+              } else { state.hadErr = true; state.msg = "[" + hLv + "] 請重新計算一次次方與加減。"; render(); }
+            } else if (state.stage === 5) {
+              var ok5 = val === m.remedialAns;
+              await saveLog(m.remedialPrompt, val, ok5, ok5 ? null : "E04", ok5 ? null : "H3");
+              if (ok5) { state.stage = 6; state.msg = "補救完成並通過單元！"; render(); await saveProg(6, "L3"); }
+              else { state.msg = "補救題再算一次，注意零次方與正負號。"; render(); }
+            }
+          });
+
+          var rg = document.getElementById("restart-go");
+          if (rg) rg.addEventListener("click", function () { state.stage = 1; state.attempts = 0; state.hadErr = false; state.msg = ""; render(); });
+
+          var ta = document.getElementById("t-apply");
+          if (ta) ta.addEventListener("click", async function () {
+            var tn = document.getElementById("f-tname").value.trim();
+            if (!tn) return;
+            await api("teacher_applications", "POST", null, [{ teacher_name: tn, status: "pending" }]);
+            loadAdmin();
+          });
+        }
+
+        async function loadTeacher() {
+          var box = document.getElementById("t-list");
+          if (!box) return;
+          try {
+            var rows = await api("student_progress", "GET", "order=updated_at.desc&limit=30");
+            box.innerHTML = (!rows || !rows.length) ? "尚無學生紀錄" : rows.map(function (r) {
+              return '<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px;"><strong>' + r.student_name + '</strong>・' + r.module_id + ' — 階段 ' + r.current_stage + '（' + r.mastery_level + '）</div>';
+            }).join("");
+          } catch (e) { window.__showErr(e.message); }
+        }
+
+        async function loadAdmin() {
+          var box = document.getElementById("a-list");
+          if (!box) return;
+          try {
+            var apps = await api("teacher_applications", "GET", "order=created_at.desc&limit=20");
+            box.innerHTML = (!apps || !apps.length) ? "尚無申請" : apps.map(function (a) {
+              return '<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px;"><strong>' + a.teacher_name + '</strong> — ' + a.status + '</div>';
+            }).join("");
+          } catch (e) { window.__showErr(e.message); }
+        }
+
+        function switchTab(r, el) {
+          state.role = r;
+          document.querySelectorAll(".tab-btn").forEach(function (b) { b.classList.remove("active"); });
+          el.classList.add("active");
+          render();
+          if (r === "teacher") loadTeacher();
+          if (r === "admin") loadAdmin();
+        }
+
+        document.getElementById("tab-student").addEventListener("click", function () { switchTab("student", this); });
+        document.getElementById("tab-teacher").addEventListener("click", function () { switchTab("teacher", this); });
+        document.getElementById("tab-admin").addEventListener("click", function () { switchTab("admin", this); });
+
+        render();
+      })();
+    </script>
+  </body>
+</html>
