@@ -4,32 +4,111 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI 個人化智慧教育平台 MVP</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #f7f9f5;
+        color: #1e293b;
+      }
+      .card {
+        max-width: 680px;
+        margin: 0 auto 14px;
+        background: #ffffff;
+        border: 1px solid #d1fae5;
+        border-radius: 16px;
+        padding: 16px;
+      }
+      .btn {
+        display: inline-block;
+        padding: 10px 16px;
+        border: 0;
+        border-radius: 10px;
+        background: #047857;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        font-size: 14px;
+        margin: 10px 0;
+      }
+      #err-box {
+        display: none;
+        max-width: 680px;
+        margin: 12px auto;
+        padding: 12px;
+        border: 1px solid #e11d48;
+        background: #fff1f2;
+        color: #881337;
+        border-radius: 12px;
+        font-size: 12px;
+        white-space: pre-wrap;
+      }
+    </style>
   </head>
-  <body class="bg-[#F7F9F5] text-slate-800 antialiased">
-    <div id="root" class="p-4 text-sm text-slate-600">正在載入學習平台，請稍候...</div>
-    <div id="err-box" style="display:none;margin:16px;padding:12px;border:1px solid #e11d48;background:#fff1f2;color:#881337;border-radius:12px;font-size:12px;white-space:pre-wrap;word-break:break-word;"></div>
+  <body>
+    <div id="err-box"></div>
+    <div id="app" class="card">正在啟動平台...</div>
+
     <script>
       (function () {
-        var box = document.getElementById("err-box");
-        function show(msg) {
-          if (!box) return;
-          box.style.display = "block";
-          box.textContent += (box.textContent ? "\n\n" : "") + msg;
+        var errBox = document.getElementById("err-box");
+        function showErr(msg) {
+          if (!errBox) return;
+          errBox.style.display = "block";
+          errBox.textContent += (errBox.textContent ? "\n\n" : "") + msg;
         }
-        window.addEventListener("error", function (e) {
-          show("Error: " + (e.message || e.filename || "未知錯誤"));
-        });
-        window.addEventListener("unhandledrejection", function (e) {
-          var r = e.reason;
-          show("Promise Error: " + ((r && r.message) || r || "未知錯誤"));
-        });
+        window.onerror = function (message, source, lineno) {
+          showErr("Error: " + message + (lineno ? " (Line " + lineno + ")" : ""));
+        };
+
+        var app = document.getElementById("app");
+        var state = { name: "", step: 1 };
+
+        function render() {
+          if (state.step === 1) {
+            app.innerHTML =
+              '<div style="font-weight:700;color:#064e3b;margin-bottom:8px;">AI 個人化教育平台（原生防錯測試版）</div>' +
+              '<h1 style="font-size:16px;margin:0 0 8px;">M1-01 正整數指數（教材預覽）</h1>' +
+              '<p style="font-size:14px;line-height:1.6;margin:0 0 8px;">a^n 代表 n 個 a 連續相乘，例如 2^3 = 2 × 2 × 2 = 8。</p>' +
+              '<input id="name-input" class="input" type="text" placeholder="輸入你的姓名測試" value="' +
+              state.name.replace(/"/g, "&quot;") +
+              '" />' +
+              '<button id="next-btn" class="btn">下一步：進入練習</button>';
+
+            document.getElementById("name-input").addEventListener("input", function (e) {
+              state.name = e.target.value;
+            });
+            document.getElementById("next-btn").addEventListener("click", function () {
+              state.step = 2;
+              render();
+            });
+          } else {
+            var greeting = state.name ? state.name + "，" : "";
+            app.innerHTML =
+              '<div style="font-weight:700;color:#064e3b;margin-bottom:8px;">互動練習</div>' +
+              '<p style="font-size:14px;line-height:1.6;margin:0 0 12px;">' +
+              greeting +
+              "請計算 3^2 的值是多少？（答案為 9）</p>" +
+              '<button id="back-btn" class="btn" style="background:#ecfdf5;color:#065f46;">回到第 1 步</button>';
+
+            document.getElementById("back-btn").addEventListener("click", function () {
+              state.step = 1;
+              render();
+            });
+          }
+        }
+
+        render();
       })();
     </script>
-    <script type="text/babel" src="./app.jsx"></script>
   </body>
 </html>
