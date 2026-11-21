@@ -1,35 +1,18 @@
-import React, { useEffect, useState } from "react";
-import { createRoot } from "react-dom/client";
-import { createClient } from "@supabase/supabase-js";
-import {
-  AlertCircle,
-  BookOpen,
-  Calendar,
-  CheckCircle2,
-  ClipboardCheck,
-  HelpCircle,
-  Lock,
-  RefreshCw,
-  RotateCcw,
-  Send,
-  ShieldCheck,
-  Sparkles,
-  UserCheck,
-  Users,
-} from "lucide-react";
+const { useEffect, useState } = React;
 
 // ==========================================
-// 1. Supabase 雲端資料庫設定（已填入你的專案資訊）
+// 1. Supabase 雲端資料庫設定
 // ==========================================
 const SUPABASE_URL = "https://antfbdsqrznnssdvpzcn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_z7l4i49w93dZ0yrR5SPbVw_ShVGKm0J";
 
 const isSupabaseConfigured =
+  Boolean(window.supabase) &&
   !SUPABASE_URL.includes("你的專案網址") &&
   !SUPABASE_ANON_KEY.includes("你的_ANON_PUBLIC_KEY");
 
-const supabase = isSupabaseConfigured
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+const db = isSupabaseConfigured
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
 // ==========================================
@@ -82,7 +65,8 @@ const MODULE_DATA = {
       },
     },
     check: {
-      prompt: "【觀念辨識】下列哪一個算式的值與 -5^2 相等？（請輸入選項代號 A、B 或 C）\nA. (-5)^2\nB. -(5 × 5)\nC. (-5) × 2",
+      prompt:
+        "【觀念辨識】下列哪一個算式的值與 -5^2 相等？（請輸入選項代號 A、B 或 C）\nA. (-5)^2\nB. -(5 × 5)\nC. (-5) × 2",
       expected: "B",
       hints: {
         H1: "觀察負號有沒有被括號包起來，次方會優先作用在誰身上？",
@@ -122,10 +106,7 @@ const MODULE_DATA = {
       "當底數 a ≠ 0 時，規定 a^0 = 1。若底數 a = 0，則 0^0 在數學上「不予定義（無意義）」。",
     derivation:
       "由同底數相除指數相減：a^n ÷ a^n = a^(n-n) = a^0；另一方面，任何非零數除以自己都等於 1，因此必須規定 a^0 = 1（a ≠ 0）。",
-    examples: [
-      "99^0 = 1",
-      "(-4)^0 = 1",
-    ],
+    examples: ["99^0 = 1", "(-4)^0 = 1"],
     counterExamples: [
       "錯誤：5^0 = 0（零次方不是乘以 0）",
       "陷阱：0^0 無意義，不可寫成 1",
@@ -142,7 +123,8 @@ const MODULE_DATA = {
       },
     },
     check: {
-      prompt: "【條件判斷】若 (x - 3)^0 = 1 成立，則 x 必須滿足什麼條件？（請輸入選項代號 A、B 或 C）\nA. x 可以是任意實數\nB. x ≠ 3\nC. x > 3",
+      prompt:
+        "【條件判斷】若 (x - 3)^0 = 1 成立，則 x 必須滿足什麼條件？（請輸入選項代號 A、B 或 C）\nA. x 可以是任意實數\nB. x ≠ 3\nC. x > 3",
       expected: "B",
       hints: {
         H1: "回想零指數定義中的「必要條件」：底數不能等於多少？",
@@ -179,9 +161,6 @@ const STAGE_NAMES = [
   "6. 學習總結",
 ];
 
-// ==========================================
-// 3. 規則式錯誤分類引擎（E01 - E07）
-// ==========================================
 function diagnoseError(modId, stage, rawInput) {
   const ans = rawInput.trim().toUpperCase();
   if (!ans) return { code: "E06", name: "題意理解或作答不完整" };
@@ -211,9 +190,6 @@ function getFutureDateStr(days) {
   return d.toISOString().slice(0, 10);
 }
 
-// ==========================================
-// 4. 主應用程式
-// ==========================================
 function App() {
   const [role, setRole] = useState("student");
   const [studentName, setStudentName] = useState(
@@ -251,9 +227,9 @@ function App() {
   }, [classCode]);
 
   async function restoreStudentProgress(name, code, modId) {
-    if (!supabase || !name.trim()) return;
+    if (!db || !name.trim()) return;
     const rowId = `${code.trim() || "MATH2026"}_${name.trim()}_${modId}`;
-    const { data } = await supabase
+    const { data } = await db
       .from("student_progress")
       .select("*")
       .eq("id", rowId)
@@ -275,7 +251,7 @@ function App() {
   }
 
   async function saveProgressToDb(nextStage, mastery = "L1", extra = {}) {
-    if (!supabase || !studentName.trim()) return;
+    if (!db || !studentName.trim()) return;
     const activeCode = classCode.trim() || "MATH2026";
     const rowId = `${activeCode}_${studentName.trim()}_${selectedModId}`;
     const payload = {
@@ -291,7 +267,7 @@ function App() {
       review_day7: extra.day7 || undefined,
       updated_at: new Date().toISOString(),
     };
-    const { error } = await supabase.from("student_progress").upsert([payload]);
+    const { error } = await db.from("student_progress").upsert([payload]);
     if (error) {
       setSyncNotice("雲端同步異常：" + error.message);
     } else {
@@ -300,8 +276,8 @@ function App() {
   }
 
   async function insertAnswerLog({ promptText, userAns, isCorrect, errorCode, hintLevel }) {
-    if (!supabase || !studentName.trim()) return null;
-    const { data, error } = await supabase
+    if (!db || !studentName.trim()) return null;
+    const { data, error } = await db
       .from("answer_logs")
       .insert([
         {
@@ -328,8 +304,8 @@ function App() {
 
   async function handleReflectionChoice(choiceText) {
     setShowReflection(false);
-    if (supabase && lastErrorLogId) {
-      await supabase
+    if (db && lastErrorLogId) {
+      await db
         .from("answer_logs")
         .update({ self_reflection: choiceText })
         .eq("id", lastErrorLogId);
@@ -513,22 +489,22 @@ function App() {
   }
 
   async function loadDashboardData() {
-    if (!supabase) return;
+    if (!db) return;
     setLoadingDash(true);
     const activeCode = classCode.trim() || "MATH2026";
     const [{ data: lData }, { data: pData }, { data: tData }] = await Promise.all([
-      supabase
+      db
         .from("answer_logs")
         .select("*")
         .eq("class_code", activeCode)
         .order("created_at", { ascending: false })
         .limit(100),
-      supabase
+      db
         .from("student_progress")
         .select("*")
         .eq("class_code", activeCode)
         .order("updated_at", { ascending: false }),
-      supabase
+      db
         .from("teacher_applications")
         .select("*")
         .order("created_at", { ascending: false }),
@@ -547,8 +523,8 @@ function App() {
 
   async function handleTeacherApply(e) {
     e.preventDefault();
-    if (!supabase || !newTeacherName.trim()) return;
-    await supabase
+    if (!db || !newTeacherName.trim()) return;
+    await db
       .from("teacher_applications")
       .insert([{ teacher_name: newTeacherName.trim(), status: "pending" }]);
     setNewTeacherName("");
@@ -556,21 +532,21 @@ function App() {
   }
 
   async function handleApproveTeacher(id, status) {
-    if (!supabase) return;
-    await supabase.from("teacher_applications").update({ status }).eq("id", id);
-    await supabase.from("audit_logs").insert([
+    if (!db) return;
+    await db.from("teacher_applications").update({ status }).eq("id", id);
+    await db.from("audit_logs").insert([
       { action: `TEACHER_${status.toUpperCase()}`, target_info: `application_id=${id}` },
     ]);
     loadDashboardData();
   }
 
   async function handleAdminResetProgress(row) {
-    if (!supabase) return;
-    await supabase
+    if (!db) return;
+    await db
       .from("student_progress")
       .update({ current_stage: 1, mastery_level: "L1", need_remedial: false })
       .eq("id", row.id);
-    await supabase.from("audit_logs").insert([
+    await db.from("audit_logs").insert([
       {
         action: "RESET_STUDENT_PROGRESS",
         target_info: `${row.student_name} (${row.module_id})`,
@@ -598,7 +574,6 @@ function App() {
       <header className="bg-white border-b border-emerald-100 sticky top-0 z-20">
         <div className="max-w-4xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-emerald-700" />
             <span className="font-bold text-emerald-950">AI 個人化教育平台</span>
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-medium">
               規則式教學測試模式
@@ -628,7 +603,22 @@ function App() {
 
       <main className="max-w-4xl mx-auto px-4 pt-5 space-y-5">
         {!isSupabaseConfigured && (
-          <div className="bg-amber-50 border border-amber-300 text-amber-900 p-3.5 rounded-2xl text-xs sm:text-sm flex gap-2.5">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-amber-700" />
-            <div>
-              <strong>尚未連接 Supabase 雲端資料庫：</strong>請檢查 <code>
+          <div className="bg-amber-50 border border-amber-300 text-amber-900 p-3.5 rounded-2xl text-xs sm:text-sm">
+            <strong>尚未連接 Supabase 雲端資料庫：</strong>請檢查設定或網路連線。
+          </div>
+        )}
+
+        <section className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-xs space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {role === "student" && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  學生姓名（必填）
+                </label>
+                <input
+                  type="text"
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  onBlur={() => restoreStudentProgress(studentName, classCode, selectedModId)}
+                  placeholder="輸入姓名（如：陳小華）"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emeral
