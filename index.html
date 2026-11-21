@@ -18,7 +18,25 @@
     </script>
   </head>
   <body class="bg-[#F7F9F5] text-slate-800 antialiased">
-    <div id="root"></div>
+    <div id="root" class="p-4 text-sm text-slate-600">正在載入學習平台，請稍候...</div>
+    <div id="err-box" style="display:none;margin:16px;padding:12px;border:1px solid #e11d48;background:#fff1f2;color:#881337;border-radius:12px;font-size:12px;white-space:pre-wrap;word-break:break-word;"></div>
+    <script>
+      (function () {
+        var box = document.getElementById("err-box");
+        function show(msg) {
+          if (!box) return;
+          box.style.display = "block";
+          box.textContent += (box.textContent ? "\n\n" : "") + msg;
+        }
+        window.addEventListener("error", function (e) {
+          show("Error: " + (e.message || e.filename || "未知錯誤"));
+        });
+        window.addEventListener("unhandledrejection", function (e) {
+          var r = e.reason;
+          show("Promise Error: " + ((r && r.message) || r || "未知錯誤"));
+        });
+      })();
+    </script>
     <script type="text/babel" data-type="module" src="./app.jsx"></script>
   </body>
 </html>
