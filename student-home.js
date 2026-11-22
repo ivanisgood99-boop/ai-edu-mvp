@@ -1,226 +1,256 @@
-/* 學生端首頁與宇宙星球地圖（使用學生顯示名稱、星球星級精熟度、直線與圓單元） */
+/* 學生端宇宙探索地圖：Chapter 1 數與式、Chapter 2 直線與圓、Chapter 3 多項式 */
 (function () {
   "use strict";
 
-  var DEMO_HOME = {
-    profile: {
-      name: localStorage.getItem("edu_stu") || "星航學員",
-      roleTitle: "宇宙探索見習生",
-      classCode: localStorage.getItem("edu_code") || "MATH2026"
-    },
-    status: {
-      progressPercent: 40,
-      progressLabel: "航段進度（示範）",
-      energyCurrent: 100,
-      energyMax: 100,
-      rocketSupply: 3,
-      learningPoints: 240
-    },
-    today: {
-      goal: "完成一個星球單元的循序學習與補救練習（示範）",
-      recentUnit: "正整數次方（示範）",
-      pendingTasks: [
-        { id: "t1", title: "探索「正整數次方」星球關卡", tag: "可探索" },
-        { id: "t2", title: "探索「直線與圓」星球航線", tag: "新單元" }
-      ]
-    },
-    achievements: {
-      streakDays: 4,
-      completedUnits: 1,
-      badgesCount: 2,
-      latestBadge: "觀念釐清徽章（示範）"
-    },
-    topicPlanets: [
-      { id: "M1-01", available: true, title: "正整數次方", desc: "乘方定義、負數次方與括號辨識", styleClass: "planet-math", isAssessment: false },
-      { id: "M1-02", available: true, title: "零次方", desc: "非零底數零次方與底數限制", styleClass: "planet-math", isAssessment: false },
-      { id: "M1-03", available: false, title: "負整數次方", desc: "教材建置中，尚未開放", styleClass: "planet-math", isAssessment: false }
-    ],
-    lineCirclePlanets: [
-      { id: "LC-01", available: true, title: "坐標平面與點的關係", desc: "平面距離與方位關係", styleClass: "planet-geo", isAssessment: false },
-      { id: "LC-02", available: true, title: "直線的斜率與傾斜程度", desc: "斜率定義與升降變化", styleClass: "planet-geo", isAssessment: false },
-      { id: "LC-03", available: true, title: "直線方程式的建立與判讀", desc: "直線關係與代入檢驗", styleClass: "planet-geo", isAssessment: false },
-      { id: "LC-04", available: true, title: "圓的方程式與圓心半徑", desc: "圓心、半徑與標準式", styleClass: "planet-geo", isAssessment: false },
-      { id: "LC-05", available: true, title: "直線與圓的位置關係", desc: "距離與半徑比較判斷", styleClass: "planet-geo", isAssessment: false },
-      { id: "LC-06", available: true, title: "直線與圓的綜合應用", desc: "坐標與圓的綜合解題", styleClass: "planet-geo", isAssessment: false },
-      { id: "LC-ASSESS", available: true, title: "直線與圓星球綜合評量", desc: "單元第 2n+1 關卡綜合檢驗", styleClass: "planet-assess", isAssessment: true }
-    ],
-    schoolCourses: [
-      { id: "LC-01", available: true, title: "高一上・直線與圓（2n+1 關卡航線）", desc: "包含 6 個知識點與 1 個星球綜合評量", styleClass: "planet-geo", isAssessment: false },
-      { id: "M1-01", available: true, title: "數與式・正整數次方", desc: "循序六階段教學關卡", styleClass: "planet-math", isAssessment: false },
-      { id: "M1-02", available: true, title: "數與式・零次方", desc: "循序六階段教學關卡", styleClass: "planet-math", isAssessment: false }
-    ],
-    explanations: {
-      energy: "【示範說明】能量（100/100）為首頁展示數值，尚未與真實作答連動。",
-      rocket: "【示範說明】火箭補給（3 枚）為首頁展示數值，目前僅供說明展示。"
-    }
+  var state = {
+    activeChapterId: "CH-2",
+    selectedLevelId: "CH2-L2",
+    infoDrawer: null
   };
-
-  function getStarBadgeForStudent(nodeId, studentName) {
-    if (!window.TeachingEngineModule || !window.TeachingEngineModule.repository || !window.TeachingEngineModule.evaluatePlanetStarRating) {
-      return "尚未評定";
-    }
-    var sid = (studentName || localStorage.getItem("edu_stu") || "訪客學員").trim() || "訪客學員";
-    var sess = window.TeachingEngineModule.repository.getNodeSession(sid, nodeId);
-    var ev = window.TeachingEngineModule.evaluatePlanetStarRating(sess.logs, sess.starCode, sess.remedialPassed);
-    return ev ? ev.studentLabel : "尚未評定";
-  }
-
-  var StudentHomeDataProvider = {
-    getHomeSnapshot: function () {
-      var base = JSON.parse(JSON.stringify(DEMO_HOME));
-      var sn = localStorage.getItem("edu_stu");
-      var sc = localStorage.getItem("edu_code");
-      if (sn && sn.trim()) base.profile.name = sn.trim();
-      if (sc && sc.trim()) base.profile.classCode = sc.trim();
-      return base;
-    }
-  };
-
-  var homeState = { activePanel: null };
 
   function esc(str) {
-    return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 
-  function renderPlanetSvg(styleClass, isAssessment) {
-    if (isAssessment) {
-      return "<svg class=\"planet-svg\" viewBox=\"0 0 64 64\" width=\"54\" height=\"54\" aria-hidden=\"true\"><circle cx=\"32\" cy=\"32\" r=\"16\" fill=\"#2DD4BF\"/><ellipse cx=\"32\" cy=\"32\" rx=\"29\" ry=\"10\" fill=\"none\" stroke=\"#38BDF8\" stroke-width=\"2.2\" transform=\"rotate(-18 32 32)\"/><circle cx=\"32\" cy=\"32\" r=\"22\" fill=\"none\" stroke=\"rgba(168,85,247,0.65)\" stroke-width=\"1.5\" stroke-dasharray=\"4 3\"/></svg>";
-    }
-    if (styleClass === "planet-geo") {
-      return "<svg class=\"planet-svg\" viewBox=\"0 0 64 64\" width=\"52\" height=\"52\" aria-hidden=\"true\"><circle cx=\"32\" cy=\"32\" r=\"18\" fill=\"#38BDF8\"/><path d=\"M16 28 Q32 22 48 30\" fill=\"none\" stroke=\"#E0F2FE\" stroke-width=\"2\"/><circle cx=\"25\" cy=\"24\" r=\"4\" fill=\"rgba(15,23,42,0.28)\"/></svg>";
-    }
-    return "<svg class=\"planet-svg\" viewBox=\"0 0 64 64\" width=\"52\" height=\"52\" aria-hidden=\"true\"><circle cx=\"32\" cy=\"32\" r=\"18\" fill=\"#818CF8\"/><ellipse cx=\"32\" cy=\"34\" rx=\"26\" ry=\"7\" fill=\"none\" stroke=\"#2DD4BF\" stroke-width=\"2\" transform=\"rotate(14 32 34)\"/></svg>";
-  }
-  function renderPlanetCards(list, studentName, modeLabel) {
-    return list.map(function (item) {
-      var starText = item.available ? getStarBadgeForStudent(item.id, studentName) : "尚未開放";
-      var cls = "cosmos-planet-node" + (item.isAssessment ? " assessment-star" : "") + (!item.available ? " locked-planet" : "");
+  function renderPlanetArtwork(styleName, isFinal) {
+    if (isFinal) {
       return (
-        "<div class=\"" + cls + "\">" +
-          renderPlanetSvg(item.styleClass, item.isAssessment) +
-          "<div class=\"planet-name\">" + esc(item.title) + "</div>" +
-          "<div class=\"planet-desc\">" + esc(item.desc) + "</div>" +
-          "<div class=\"cosmos-star-rating\">" + esc(starText) + "</div>" +
-          (item.available
-            ? "<button type=\"button\" class=\"sh-mini-btn primary\" data-launch-node=\"" + esc(item.id) + "\" data-launch-mode=\"" + esc(modeLabel) + "\">登陸星球</button>"
-            : "<span class=\"sh-tag\">尚未開放</span>") +
-        "</div>"
+        "<svg class=\"cosmos-planet-art\" viewBox=\"0 0 80 80\" width=\"72\" height=\"72\" aria-hidden=\"true\">" +
+        "<defs><radialGradient id=\"gFinal\" cx=\"35%\" cy=\"30%\"><stop offset=\"0%\" stop-color=\"#5EEAD4\"/><stop offset=\"65%\" stop-color=\"#0284C7\"/><stop offset=\"100%\" stop-color=\"#0F172A\"/></radialGradient></defs>" +
+        "<circle cx=\"40\" cy=\"40\" r=\"20\" fill=\"url(#gFinal)\"/>" +
+        "<ellipse cx=\"40\" cy=\"40\" rx=\"36\" ry=\"11\" fill=\"none\" stroke=\"#38BDF8\" stroke-width=\"2\" transform=\"rotate(-18 40 40)\"/>" +
+        "<circle cx=\"40\" cy=\"40\" r=\"27\" fill=\"none\" stroke=\"#C084FC\" stroke-width=\"1.4\" stroke-dasharray=\"4 3\"/>" +
+        "</svg>"
+      );
+    }
+    if (styleName === "planet-ring-cyan") {
+      return (
+        "<svg class=\"cosmos-planet-art\" viewBox=\"0 0 80 80\" width=\"68\" height=\"68\" aria-hidden=\"true\">" +
+        "<defs><radialGradient id=\"gRing\" cx=\"32%\" cy=\"28%\"><stop offset=\"0%\" stop-color=\"#7DD3FC\"/><stop offset=\"70%\" stop-color=\"#1D4ED8\"/><stop offset=\"100%\" stop-color=\"#090D16\"/></radialGradient></defs>" +
+        "<circle cx=\"40\" cy=\"40\" r=\"20\" fill=\"url(#gRing)\"/>" +
+        "<path d=\"M16 36 Q40 28 64 38\" fill=\"none\" stroke=\"#2DD4BF\" stroke-width=\"2\"/>" +
+        "<ellipse cx=\"40\" cy=\"42\" rx=\"34\" ry=\"9\" fill=\"none\" stroke=\"#38BDF8\" stroke-width=\"2\" transform=\"rotate(12 40 42)\"/>" +
+        "</svg>"
+      );
+    }
+    if (styleName === "planet-ring-violet") {
+      return (
+        "<svg class=\"cosmos-planet-art\" viewBox=\"0 0 80 80\" width=\"68\" height=\"68\" aria-hidden=\"true\">" +
+        "<defs><radialGradient id=\"gViol\" cx=\"32%\" cy=\"28%\"><stop offset=\"0%\" stop-color=\"#E9D5FF\"/><stop offset=\"68%\" stop-color=\"#7E22CE\"/><stop offset=\"100%\" stop-color=\"#0B1228\"/></radialGradient></defs>" +
+        "<circle cx=\"40\" cy=\"40\" r=\"20\" fill=\"url(#gViol)\"/>" +
+        "<circle cx=\"64\" cy=\"22\" r=\"5\" fill=\"#38BDF8\" opacity=\"0.85\"/>" +
+        "<path d=\"M8 40 Q40 12 72 40\" fill=\"none\" stroke=\"rgba(192,132,252,0.45)\" stroke-width=\"1.3\" stroke-dasharray=\"3 3\"/>" +
+        "</svg>"
+      );
+    }
+    return (
+      "<svg class=\"cosmos-planet-art\" viewBox=\"0 0 80 80\" width=\"68\" height=\"68\" aria-hidden=\"true\">" +
+      "<defs><radialGradient id=\"gCrat\" cx=\"30%\" cy=\"28%\"><stop offset=\"0%\" stop-color=\"#FDE68A\"/><stop offset=\"62%\" stop-color=\"#0284C7\"/><stop offset=\"100%\" stop-color=\"#0B1228\"/></radialGradient></defs>" +
+      "<circle cx=\"40\" cy=\"40\" r=\"20\" fill=\"url(#gCrat)\"/>" +
+      "<circle cx=\"31\" cy=\"32\" r=\"4.5\" fill=\"rgba(15,23,42,0.32)\"/>" +
+      "<circle cx=\"47\" cy=\"46\" r=\"3.5\" fill=\"rgba(15,23,42,0.28)\"/>" +
+      "</svg>"
+    );
+  }
+
+  function getStudentName() {
+    var el = document.getElementById("stuInp");
+    var v = el && el.value ? el.value.trim() : "";
+    var ls = (localStorage.getItem("edu_stu") || "").trim();
+    return v || ls || "訪客學員";
+  }
+
+  function renderSelectedInspector(chComp) {
+    var lvItem = chComp.levels.find(function (x) { return x.levelId === state.selectedLevelId; }) || chComp.levels[0];
+    if (!lvItem) return "";
+
+    var pendingTasks = [];
+    if (!lvItem.stage1Completed) {
+      pendingTasks.push("完成 Stage " + lvItem.levelNumber + "-1 觀念學習（教材學習、引導問題、理解檢查）");
+    }
+    if (!lvItem.stage2Completed) {
+      pendingTasks.push("完成 Stage " + lvItem.levelNumber + "-2 刷題練習（互動練習、個人化加強、學習總結）");
+    }
+    if (lvItem.missingReasons && lvItem.missingReasons.length) {
+      pendingTasks = pendingTasks.concat(lvItem.missingReasons);
+    }
+    if (!pendingTasks.length) {
+      pendingTasks.push("本 Level 雙 Stage 皆已完成，可再次練習或探索下一顆星球");
+    }
+
+    return (
+      "<div class=\"cosmos-inspector\">" +
+      "<div class=\"cosmos-inspector-head\">" +
+      "<div><strong>Level " + lvItem.levelNumber + "：" + esc(lvItem.title) + "</strong> <span class=\"cosmos-star-pill\">" + esc(lvItem.starLabel) + "</span></div>" +
+      "<span class=\"sh-tag\">" + (lvItem.levelCompleted ? "已完成" : "進行中") + "</span>" +
+      "</div>" +
+      "<div class=\"cosmos-stage-pair\">" +
+      "<div class=\"cosmos-stage-box\"><strong>Stage " + lvItem.levelNumber + "-1 觀念學習</strong><div>狀態：" + (lvItem.stage1Completed ? "已完成" : "尚未完成") + "</div></div>" +
+      "<div class=\"cosmos-stage-box\"><strong>Stage " + lvItem.levelNumber + "-2 刷題練習</strong><div>狀態：" + (lvItem.stage2Completed ? "已完成" : (lvItem.stage2Unlocked ? "已解鎖・待完成" : "完成 X-1 後解鎖")) + "</div></div>" +
+      "</div>" +
+      "<div class=\"cosmos-pending-box\"><strong>尚未完成／待補齊項目：</strong><ul>" +
+      pendingTasks.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") +
+      "</ul></div>" +
+      "<div class=\"sh-actions\">" +
+      "<button type=\"button\" class=\"sh-mini-btn primary\" id=\"sh-enter-s1\">進入 Stage " + lvItem.levelNumber + "-1 觀念學習</button>" +
+      "<button type=\"button\" class=\"sh-mini-btn\" id=\"sh-enter-s2\" " + (!lvItem.stage2Unlocked ? "disabled style=\"opacity:0.45;\"" : "") + ">進入 Stage " + lvItem.levelNumber + "-2 刷題練習</button>" +
+      "</div>" +
+      "</div>"
+    );
+  }
+
+  function renderStudentHome(target) {
+    if (!target) return;
+    var eng = window.TeachingEngineModule;
+    var sid = getStudentName();
+    var chapters = (eng && eng.chapters) || {};
+    var cid = state.activeChapterId;
+    var ch = chapters[cid] || chapters["CH-2"];
+    var chComp = (eng && eng.getChapterCompletion)
+      ? eng.getChapterCompletion(sid, ch.chapterId)
+      : { completedCount: 0, totalCount: 0, allCompleted: false, levels: [] };
+
+    if (!chComp.levels.some(function (x) { return x.levelId === state.selectedLevelId; }) && chComp.levels[0]) {
+      state.selectedLevelId = chComp.levels[0].levelId;
+    }
+
+    var chTabsHtml = Object.keys(chapters).map(function (k) {
+      var item = chapters[k];
+      return (
+        "<button type=\"button\" class=\"cosmos-ch-tab" + (k === ch.chapterId ? " active" : "") + "\" data-cosmos-ch=\"" + esc(k) + "\">" +
+        "Chapter " + item.chapterNumber + "：" + esc(item.title) +
+        "</button>"
       );
     }).join("");
-  }
 
-  function renderActiveDrawer(data) {
-    if (!homeState.activePanel) return "";
-    var title = "", bodyHtml = "";
-    if (homeState.activePanel === "topic") {
-      title = "主題星球探索";
-      bodyHtml = "<div class=\"cosmos-planet-grid\">" + renderPlanetCards(data.topicPlanets, data.profile.name, "topic") + "</div>";
-    } else if (homeState.activePanel === "school") {
-      title = "學校課程・直線與圓星球群（高一上・共 2n+1 關卡）";
-      bodyHtml = "<div class=\"cosmos-planet-grid\">" + renderPlanetCards(data.lineCirclePlanets, data.profile.name, "school") + "</div>";
-    } else if (homeState.activePanel === "profile") {
-      title = "探索者資料（本機原型）";
-      bodyHtml = "<div>學員名稱：<strong>" + esc(data.profile.name) + "</strong></div><div>稱號：" + esc(data.profile.roleTitle) + "</div><div>班級碼：" + esc(data.profile.classCode) + "</div>";
-    } else if (homeState.activePanel === "settings") {
-      title = "星圖說明";
-      bodyHtml = "<div>星星精熟度依作答證據、提示依賴與補救表現更新；證據不足顯示「尚未評定」，單次失誤不會立即降星。</div>";
-    } else if (homeState.activePanel === "energy") {
-      title = "能量說明（示範資料）";
-      bodyHtml = "<div>" + esc(data.explanations.energy) + "</div>";
-    } else if (homeState.activePanel === "rocket") {
-      title = "火箭補給說明（示範資料）";
-      bodyHtml = "<div>" + esc(data.explanations.rocket) + "</div>";
+    var planetsHtml = chComp.levels.map(function (lv) {
+      var isSel = lv.levelId === state.selectedLevelId;
+      return (
+        "<button type=\"button\" class=\"cosmos-planet-card" + (isSel ? " selected" : "") + "\" data-select-lv=\"" + esc(lv.levelId) + "\">" +
+        renderPlanetArtwork(lv.planetStyle, false) +
+        "<div class=\"cosmos-planet-title\">Level " + lv.levelNumber + "：" + esc(lv.title) + "</div>" +
+        "<div class=\"cosmos-star-pill\">" + esc(lv.starLabel) + "</div>" +
+        "<div class=\"cosmos-planet-meta\">X-1 " + (lv.stage1Completed ? "完成" : "未完") + " · X-2 " + (lv.stage2Completed ? "完成" : "未完") + "</div>" +
+        "</button>"
+      );
+    }).join("");
+
+    var finalStatusText = chComp.allCompleted
+      ? "已解鎖（全 Level 完成）"
+      : "尚未解鎖（需完成本章全部 " + chComp.totalCount + " 個 Level）";
+
+    var finalCardHtml =
+      "<div class=\"cosmos-final-star" + (chComp.allCompleted ? " unlocked" : " locked") + "\">" +
+      renderPlanetArtwork("", true) +
+      "<div>" +
+      "<div class=\"cosmos-planet-title\">Chapter " + ch.chapterNumber + " 最終評量與單元總結</div>" +
+      "<div class=\"cosmos-planet-meta\">" + esc(finalStatusText) + "</div>" +
+      "</div>" +
+      "<button type=\"button\" class=\"sh-mini-btn primary\" id=\"sh-open-final\" " + (!chComp.allCompleted ? "disabled style=\"opacity:0.45;\"" : "") + ">開啟單元總結</button>" +
+      "</div>";
+
+    var drawerHtml = "";
+    if (state.infoDrawer === "profile") {
+      drawerHtml = "<div class=\"sh-drawer\"><div class=\"sh-drawer-head\"><span>學員資料</span><button type=\"button\" class=\"sh-mini-btn\" id=\"sh-close-info\">關閉</button></div><div>學員名稱：<strong>" + esc(sid) + "</strong>｜星級精熟度依各 Level 作答與加強紀錄獨立評估。</div></div>";
+    } else if (state.infoDrawer === "guide") {
+      drawerHtml = "<div class=\"sh-drawer\"><div class=\"sh-drawer-head\"><span>星級與關卡說明</span><button type=\"button\" class=\"sh-mini-btn\" id=\"sh-close-info\">關閉</button></div><div>每個 Level 皆有 Stage X-1（觀念學習）與 Stage X-2（刷題練習）。兩個 Stage 都完成後該 Level 才算完成；全部 Level 完成後解鎖 Chapter 最終評量。資料不足顯示「尚未評定」，單次錯誤不會立即降星。</div></div>";
     }
-    return "<div class=\"sh-drawer\"><div class=\"sh-drawer-head\"><span>" + esc(title) + "</span><button type=\"button\" class=\"sh-mini-btn\" id=\"sh-close-drawer\">關閉</button></div>" + bodyHtml + "</div>";
-  }
 
-  function renderStudentHome(targetContainer) {
-    if (!targetContainer) return;
-    var data = StudentHomeDataProvider.getHomeSnapshot();
-
-    targetContainer.innerHTML =
-      "<section class=\"space-home-root\" aria-label=\"宇宙探索首頁\">" +
-        "<div class=\"nebula-layer\" aria-hidden=\"true\"></div>" +
-        "<div class=\"space-content\">" +
-          "<div class=\"sh-topbar\">" +
-            "<div class=\"sh-brand\">" +
-              "<div class=\"sh-logo-mark\" aria-hidden=\"true\">✦</div>" +
-              "<div><h1 class=\"sh-title\">星航智學・宇宙學習地圖</h1>" +
-              "<p class=\"sh-subtitle\">歡迎回來，" + esc(data.profile.name) + "｜航段數值與成就為示範資料</p></div>" +
-            "</div>" +
-            "<div class=\"sh-top-actions\">" +
-              "<button type=\"button\" class=\"sh-icon-btn\" data-sh-panel=\"profile\">個人資料</button>" +
-              "<button type=\"button\" class=\"sh-icon-btn\" data-sh-panel=\"settings\">星級說明</button>" +
-            "</div>" +
-          "</div>" +
-
-          "<div class=\"sh-panel\">" +
-            "<div class=\"sh-section-label\">航行狀態（示範資料）</div>" +
-            "<div class=\"sh-status-grid\">" +
-              "<div class=\"sh-stat-card\"><div class=\"sh-stat-title\">" + esc(data.status.progressLabel) + "</div><div class=\"sh-stat-val\">" + data.status.progressPercent + "%</div><div class=\"sh-progress-track\"><div class=\"sh-progress-fill\" style=\"width:" + data.status.progressPercent + "%;\"></div></div></div>" +
-              "<button type=\"button\" class=\"sh-stat-card interactive\" data-sh-panel=\"energy\"><div class=\"sh-stat-title\">能量（示範）</div><div class=\"sh-stat-val\">" + data.status.energyCurrent + "/" + data.status.energyMax + "</div><div class=\"sh-stat-hint\">點擊查看說明</div></button>" +
-              "<button type=\"button\" class=\"sh-stat-card interactive\" data-sh-panel=\"rocket\"><div class=\"sh-stat-title\">火箭補給（示範）</div><div class=\"sh-stat-val\">" + data.status.rocketSupply + " 枚</div><div class=\"sh-stat-hint\">點擊查看說明</div></button>" +
-              "<div class=\"sh-stat-card\"><div class=\"sh-stat-title\">學習點數（示範）</div><div class=\"sh-stat-val\">" + data.status.learningPoints + " 點</div><div class=\"sh-stat-hint\">原型示範數值</div></div>" +
-            "</div>" +
-          "</div>" +
-
-          "<div class=\"sh-panel\">" +
-            "<div class=\"sh-section-label\">星球航道入口</div>" +
-            "<div class=\"sh-entry-grid\">" +
-              "<button type=\"button\" class=\"sh-entry-card sh-entry-topic\" data-sh-panel=\"topic\">" +
-                "<span class=\"sh-entry-badge\">主題星球</span>" +
-                "<h2 class=\"sh-entry-name\">主題學習</h2>" +
-                "<p class=\"sh-entry-desc\">挑選個別知識星球，查看星級精熟度並進入循序六階段教學。</p>" +
-                "<span class=\"sh-entry-cta\">展開主題星球 →</span>" +
-              "</button>" +
-              "<button type=\"button\" class=\"sh-entry-card sh-entry-school\" data-sh-panel=\"school\">" +
-                "<span class=\"sh-entry-badge\">高一上・直線與圓</span>" +
-                "<h2 class=\"sh-entry-name\">學校學習</h2>" +
-                "<p class=\"sh-entry-desc\">探索直線與圓 6 個知識星球與第 2n+1 關卡星球綜合評量。</p>" +
-                "<span class=\"sh-entry-cta\">展開直線與圓星圖 →</span>" +
-              "</button>" +
-            "</div>" +
-            renderActiveDrawer(data) +
-          "</div>" +
-
-          "<div class=\"sh-two-col\">" +
-            "<div class=\"sh-panel\" style=\"margin-bottom:0;\">" +
-              "<div class=\"sh-section-label\">今日任務（示範資料）</div>" +
-              "<ul class=\"sh-list\">" +
-                data.today.pendingTasks.map(function (t) { return "<li><span>" + esc(t.title) + "</span><span class=\"sh-tag\">" + esc(t.tag) + "</span></li>"; }).join("") +
-              "</ul>" +
-            "</div>" +
-            "<div class=\"sh-panel\" style=\"margin-bottom:0;\">" +
-              "<div class=\"sh-section-label\">探索成就（示範資料）</div>" +
-              "<div class=\"sh-ach-grid\">" +
-                "<div class=\"sh-ach-box\"><div class=\"sh-ach-num\">" + data.achievements.streakDays + " 天</div><div class=\"sh-ach-txt\">連續學習（示範）</div></div>" +
-                "<div class=\"sh-ach-box\"><div class=\"sh-ach-num\">" + data.achievements.completedUnits + " 項</div><div class=\"sh-ach-txt\">已完成（示範）</div></div>" +
-                "<div class=\"sh-ach-box\"><div class=\"sh-ach-num\">" + data.achievements.badgesCount + " 枚</div><div class=\"sh-ach-txt\">徽章（示範）</div></div>" +
-              "</div>" +
-            "</div>" +
-          "</div>" +
-        "</div>" +
+    target.innerHTML =
+      "<section class=\"space-home-root " + esc(ch.galaxyStyle) + "\" aria-label=\"宇宙探索地圖\">" +
+      "<div class=\"nebula-layer\" aria-hidden=\"true\"></div>" +
+      "<div class=\"starfield-layer\" aria-hidden=\"true\"></div>" +
+      "<div class=\"space-content\">" +
+      "<div class=\"sh-topbar\">" +
+      "<div class=\"sh-brand\">" +
+      "<div class=\"sh-logo-mark\" aria-hidden=\"true\">✦</div>" +
+      "<div><h1 class=\"sh-title\">星航智學・宇宙學習地圖</h1>" +
+      "<p class=\"sh-subtitle\">學員：" + esc(sid) + "｜108課綱 Chapter 1 數與式、Chapter 2 直線與圓、Chapter 3 多項式</p></div>" +
+      "</div>" +
+      "<div class=\"sh-top-actions\">" +
+      "<button type=\"button\" class=\"sh-icon-btn\" data-info-panel=\"profile\">學員狀態</button>" +
+      "<button type=\"button\" class=\"sh-icon-btn\" data-info-panel=\"guide\">星級規則</button>" +
+      "</div>" +
+      "</div>" +
+      drawerHtml +
+      "<div class=\"sh-panel\">" +
+      "<div class=\"sh-section-label\">選擇星系章節（Chapter）</div>" +
+      "<div class=\"cosmos-ch-tabs\">" + chTabsHtml + "</div>" +
+      "<div class=\"cosmos-orbit-track\">" + planetsHtml + "</div>" +
+      finalCardHtml +
+      renderSelectedInspector(chComp) +
+      "</div>" +
+      "</div>" +
       "</section>";
 
-    targetContainer.querySelectorAll("[data-sh-panel]").forEach(function (btn) {
+    target.querySelectorAll("[data-cosmos-ch]").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        var pk = btn.getAttribute("data-sh-panel");
-        homeState.activePanel = homeState.activePanel === pk ? null : pk;
-        renderStudentHome(targetContainer);
+        state.activeChapterId = btn.getAttribute("data-cosmos-ch");
+        renderStudentHome(target);
       });
     });
 
-    var closeBtn = document.getElementById("sh-close-drawer");
-    if (closeBtn) closeBtn.addEventListener("click", function () { homeState.activePanel = null; renderStudentHome(targetContainer); });
-
-    targetContainer.querySelectorAll("[data-launch-node]").forEach(function (btn) {
+    target.querySelectorAll("[data-select-lv]").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        var nid = btn.getAttribute("data-launch-node");
-        var mode = btn.getAttribute("data-launch-mode") || "topic";
-        if (typeof window.__openTeachingEngineForNode === "function") window.__openTeachingEngineForNode(nid, mode);
+        state.selectedLevelId = btn.getAttribute("data-select-lv");
+        renderStudentHome(target);
       });
+    });
+
+    target.querySelectorAll("[data-info-panel]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var pk = btn.getAttribute("data-info-panel");
+        state.infoDrawer = state.infoDrawer === pk ? null : pk;
+        renderStudentHome(target);
+      });
+    });
+
+    var closeInfo = document.getElementById("sh-close-info");
+    if (closeInfo) closeInfo.addEventListener("click", function () {
+      state.infoDrawer = null;
+      renderStudentHome(target);
+    });
+
+    var bS1 = document.getElementById("sh-enter-s1");
+    if (bS1) bS1.addEventListener("click", function () {
+      var ses = eng.repository.getSession(getStudentName(), state.selectedLevelId);
+      ses.stageCode = "X-1";
+      ses.subStep = 1;
+      eng.repository.saveAndSyncMastery(ses);
+      if (typeof window.__openTeachingEngineForNode === "function") {
+        window.__openTeachingEngineForNode(state.selectedLevelId, "X-1");
+      }
+    });
+
+    var bS2 = document.getElementById("sh-enter-s2");
+    if (bS2) bS2.addEventListener("click", function () {
+      var ses = eng.repository.getSession(getStudentName(), state.selectedLevelId);
+      if (!ses.stage2Unlocked) return;
+      ses.stageCode = "X-2";
+      ses.subStep = 4;
+      eng.repository.saveAndSyncMastery(ses);
+      if (typeof window.__openTeachingEngineForNode === "function") {
+        window.__openTeachingEngineForNode(state.selectedLevelId, "X-2");
+      }
+    });
+
+    var bFinal = document.getElementById("sh-open-final");
+    if (bFinal && chComp.allCompleted) bFinal.addEventListener("click", function () {
+      var lastLv = chComp.levels[chComp.levels.length - 1];
+      if (!lastLv) return;
+      var ses = eng.repository.getSession(getStudentName(), lastLv.levelId);
+      ses.stageCode = "X-2";
+      ses.subStep = 6;
+      eng.repository.saveAndSyncMastery(ses);
+      if (typeof window.__openTeachingEngineForNode === "function") {
+        window.__openTeachingEngineForNode(lastLv.levelId, "X-2");
+      }
     });
   }
 
-  window.StudentHomeModule = { render: renderStudentHome, dataProvider: StudentHomeDataProvider };
+  window.StudentHomeModule = { render: renderStudentHome };
 })();
