@@ -4,7 +4,7 @@
   --sh-bg-card: #111C35;
   --sh-bg-sub: #1B2945;
   --sh-border: rgba(148, 163, 184, 0.28);
-  --sh-border-accent: rgba(56, 189, 248, 0.55);
+  --sh-border-accent: rgba(56, 189, 248, 0.6);
   --sh-text-primary: #F8FAFC;
   --sh-text-secondary: #CBD5E1;
   --sh-text-muted: #94A3B8;
@@ -46,33 +46,45 @@ body.sh-home-active #view.card {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(circle at 15% 18%, rgba(29, 78, 216, 0.26), transparent 44%),
-    radial-gradient(circle at 82% 24%, rgba(147, 51, 234, 0.22), transparent 46%),
-    radial-gradient(circle at 48% 84%, rgba(13, 148, 136, 0.22), transparent 48%),
-    radial-gradient(rgba(248, 250, 252, 0.22) 1px, transparent 0),
-    radial-gradient(rgba(56, 189, 248, 0.18) 1.5px, transparent 0);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 44px 44px, 76px 76px;
-  background-position: 0 0, 0 0, 0 0, 10px 14px, 32px 26px;
+    radial-gradient(circle at 14% 18%, rgba(29, 78, 216, 0.28), transparent 45%),
+    radial-gradient(circle at 84% 24%, rgba(147, 51, 234, 0.24), transparent 48%),
+    radial-gradient(circle at 46% 86%, rgba(13, 148, 136, 0.24), transparent 50%);
 }
 
-.space-content {
-  position: relative;
-  z-index: 1;
+.space-home-root.nebula-amber-blue .nebula-layer {
+  background:
+    radial-gradient(circle at 18% 20%, rgba(245, 158, 11, 0.16), transparent 45%),
+    radial-gradient(circle at 80% 30%, rgba(56, 189, 248, 0.22), transparent 48%),
+    radial-gradient(circle at 50% 85%, rgba(30, 64, 175, 0.25), transparent 50%);
 }
+
+.space-home-root.nebula-violet-teal .nebula-layer {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(168, 85, 247, 0.24), transparent 45%),
+    radial-gradient(circle at 78% 72%, rgba(45, 212, 191, 0.2), transparent 48%),
+    radial-gradient(circle at 50% 25%, rgba(37, 99, 235, 0.18), transparent 50%);
+}
+
+.starfield-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(rgba(248, 250, 252, 0.34) 1px, transparent 0),
+    radial-gradient(rgba(56, 189, 248, 0.26) 1.5px, transparent 0),
+    radial-gradient(rgba(192, 132, 252, 0.22) 2px, transparent 0);
+  background-size: 38px 38px, 68px 68px, 110px 110px;
+  background-position: 6px 10px, 24px 32px, 52px 18px;
+}
+
+.space-content { position: relative; z-index: 1; }
 
 .sh-topbar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  background-color: var(--sh-bg-card);
-  border: 1px solid var(--sh-border);
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 12px;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+  gap: 10px; background: rgba(17, 28, 53, 0.92); border: 1px solid var(--sh-border);
+  border-radius: 12px; padding: 14px; margin-bottom: 12px;
 }
-
 .sh-brand { display: flex; align-items: center; gap: 10px; }
 .sh-logo-mark {
   width: 38px; height: 38px; border-radius: 10px;
@@ -82,7 +94,6 @@ body.sh-home-active #view.card {
 .sh-title { margin: 0; font-size: 19px; font-weight: 800; color: var(--sh-text-primary); }
 .sh-subtitle { margin: 3px 0 0; font-size: 13px; color: var(--sh-text-secondary); }
 .sh-top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-
 .sh-icon-btn {
   min-height: 36px; padding: 6px 12px; border-radius: 8px;
   border: 1px solid var(--sh-border); background: var(--sh-bg-sub);
@@ -90,86 +101,106 @@ body.sh-home-active #view.card {
 }
 
 .sh-panel {
-  background-color: var(--sh-bg-shell);
-  border: 1px solid var(--sh-border);
-  border-radius: 12px;
+  background: rgba(11, 18, 40, 0.9); border: 1px solid var(--sh-border);
+  border-radius: 12px; padding: 14px; margin-bottom: 12px;
+}
+.sh-section-label { font-size: 13px; font-weight: 700; color: var(--sh-accent-blue); margin-bottom: 10px; }
+
+.cosmos-ch-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.cosmos-ch-tab {
+  min-height: 38px; padding: 7px 14px; border-radius: 999px;
+  border: 1px solid var(--sh-border); background: var(--sh-bg-card);
+  color: var(--sh-text-secondary); font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.cosmos-ch-tab.active {
+  background: var(--sh-accent-btn); border-color: var(--sh-accent-blue); color: var(--sh-text-primary);
+}
+
+.cosmos-orbit-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 12px;
   padding: 14px;
+  border-radius: 12px;
+  border: 1px dashed rgba(56, 189, 248, 0.35);
+  background: rgba(7, 11, 26, 0.65);
   margin-bottom: 12px;
 }
 
-.sh-section-label { font-size: 13px; font-weight: 700; color: var(--sh-accent-blue); margin-bottom: 10px; }
-.sh-status-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.sh-stat-card {
-  width: 100%; min-width: 0; text-align: left;
+.cosmos-planet-card {
+  width: 100%; min-width: 0;
   background: var(--sh-bg-card); border: 1px solid var(--sh-border);
-  border-radius: 10px; padding: 12px; color: var(--sh-text-primary); font-family: inherit;
+  border-radius: 12px; padding: 12px;
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
+  color: var(--sh-text-primary); cursor: pointer; font-family: inherit;
 }
-button.sh-stat-card.interactive { cursor: pointer; }
-.sh-stat-title { font-size: 12px; color: var(--sh-text-secondary); }
-.sh-stat-val { font-size: 17px; font-weight: 800; color: var(--sh-text-primary); margin-top: 6px; }
-.sh-stat-hint { font-size: 12px; color: var(--sh-text-muted); margin-top: 4px; }
-.sh-progress-track { width: 100%; height: 7px; border-radius: 999px; background: var(--sh-bg-sub); margin-top: 8px; overflow: hidden; }
-.sh-progress-fill { height: 100%; background: linear-gradient(90deg, var(--sh-accent-btn), var(--sh-accent-blue)); }
-.sh-entry-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.sh-entry-card {
-  width: 100%; min-width: 0; text-align: left; display: flex; flex-direction: column; gap: 8px;
-  padding: 16px; border-radius: 12px; border: 1px solid var(--sh-border);
-  background: var(--sh-bg-card); color: var(--sh-text-primary); cursor: pointer; font-family: inherit;
+.cosmos-planet-card.selected {
+  border-color: var(--sh-accent-blue);
+  background: #142547;
+  box-shadow: 0 0 0 1px var(--sh-accent-blue);
 }
-.sh-entry-card.sh-entry-topic { border-color: var(--sh-border-accent); }
-.sh-entry-badge {
-  align-self: flex-start; font-size: 12px; font-weight: 700;
-  background: var(--sh-bg-sub); border: 1px solid var(--sh-border); padding: 3px 9px; border-radius: 999px;
-}
-.sh-entry-name { margin: 0; font-size: 18px; font-weight: 800; color: var(--sh-text-primary); }
-.sh-entry-desc { margin: 0; font-size: 13px; color: var(--sh-text-secondary); line-height: 1.55; }
-.sh-entry-cta { font-size: 13px; font-weight: 700; color: var(--sh-accent-blue); }
-
-.sh-drawer {
-  margin-top: 12px; padding: 14px; border-radius: 10px;
-  background: var(--sh-bg-card); border: 1px solid var(--sh-border-accent);
-}
-.sh-drawer-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; margin-bottom: 10px; }
-
-.cosmos-planet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
-.cosmos-planet-node {
-  background: var(--sh-bg-sub); border: 1px solid var(--sh-border); border-radius: 12px;
-  padding: 12px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
-}
-.cosmos-planet-node.assessment-star { border-color: #2DD4BF; }
-.cosmos-planet-node.locked-planet { opacity: 0.72; }
-.planet-name { font-size: 14px; font-weight: 800; color: var(--sh-text-primary); }
-.planet-desc { font-size: 12px; color: var(--sh-text-secondary); line-height: 1.45; }
-.cosmos-star-rating {
+.cosmos-planet-title { font-size: 14px; font-weight: 800; color: var(--sh-text-primary); }
+.cosmos-planet-meta { font-size: 12px; color: var(--sh-text-secondary); }
+.cosmos-star-pill {
   font-size: 12px; font-weight: 700; color: var(--sh-accent-blue);
-  background: var(--sh-bg-card); border: 1px solid var(--sh-border); padding: 3px 9px; border-radius: 999px;
+  background: var(--sh-bg-sub); border: 1px solid var(--sh-border);
+  padding: 2px 9px; border-radius: 999px;
 }
 
+.cosmos-final-star {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border-radius: 12px;
+  background: var(--sh-bg-card); border: 1px solid rgba(45, 212, 191, 0.45);
+  margin-bottom: 12px;
+}
+.cosmos-final-star.locked { opacity: 0.75; }
+
+.cosmos-inspector {
+  background: var(--sh-bg-card); border: 1px solid var(--sh-border-accent);
+  border-radius: 12px; padding: 14px;
+}
+.cosmos-inspector-head {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px;
+  margin-bottom: 10px;
+}
+.cosmos-stage-pair {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px;
+}
+.cosmos-stage-box {
+  background: var(--sh-bg-sub); border: 1px solid var(--sh-border);
+  border-radius: 8px; padding: 10px; font-size: 13px; color: var(--sh-text-secondary);
+}
+.cosmos-stage-box strong { color: var(--sh-text-primary); }
+.cosmos-pending-box {
+  background: rgba(7, 11, 26, 0.6); border: 1px solid var(--sh-border);
+  border-radius: 8px; padding: 10px; font-size: 13px; color: var(--sh-text-secondary); margin-bottom: 10px;
+}
+.cosmos-pending-box ul { margin: 6px 0 0; padding-left: 18px; }
+.cosmos-pending-box li { margin-bottom: 3px; }
+
+.sh-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .sh-mini-btn {
   min-height: 36px; padding: 6px 12px; border-radius: 8px;
-  border: 1px solid var(--sh-border); background: var(--sh-bg-card);
+  border: 1px solid var(--sh-border); background: var(--sh-bg-sub);
   color: var(--sh-text-primary); font-size: 13px; font-weight: 700; cursor: pointer;
 }
 .sh-mini-btn.primary { background: var(--sh-accent-btn); border-color: var(--sh-accent-blue); }
-
-.sh-two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.sh-list { list-style: none; margin: 0; padding: 0; }
-.sh-list li {
-  display: flex; justify-content: space-between; align-items: center; gap: 8px;
-  padding: 9px 10px; border-radius: 8px; background: var(--sh-bg-card);
-  border: 1px solid var(--sh-border); margin-bottom: 8px; font-size: 13px;
-}
 .sh-tag {
   font-size: 11px; font-weight: 700; color: var(--sh-text-secondary);
   background: var(--sh-bg-sub); border: 1px solid var(--sh-border); padding: 2px 8px; border-radius: 999px;
 }
-.sh-ach-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.sh-ach-box { background: var(--sh-bg-card); border: 1px solid var(--sh-border); border-radius: 10px; padding: 10px 8px; text-align: center; }
-.sh-ach-num { font-size: 15px; font-weight: 800; color: var(--sh-accent-blue); }
-.sh-ach-txt { font-size: 11px; color: var(--sh-text-secondary); margin-top: 3px; }
+.sh-drawer {
+  margin-bottom: 12px; padding: 12px; border-radius: 10px;
+  background: var(--sh-bg-card); border: 1px solid var(--sh-border-accent); font-size: 13px;
+}
+.sh-drawer-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; margin-bottom: 8px; }
 
 @media (max-width: 768px) {
   .space-home-root { padding: 12px; }
-  .sh-status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sh-entry-grid, .sh-two-col { grid-template-columns: 1fr; }
+  .cosmos-orbit-track { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cosmos-stage-pair { grid-template-columns: 1fr; }
+}
+@media (max-width: 440px) {
+  .cosmos-orbit-track { grid-template-columns: 1fr; }
 }
