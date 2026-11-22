@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI 個人化教育平台 - AI 教師微技能版 (M1)</title>
+  <link rel="stylesheet" href="./student-home.css" />
   <style>
     *{box-sizing:border-box}
     body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;background:#f7f9f5;color:#1e293b;line-height:1.55}
@@ -113,10 +114,11 @@ var SKILLS={
 
 var S={
   tab:"student",
+  studentView:"home", // "home" 宇宙探索首頁 | "practice" M1 微技能練習
   stu:localStorage.getItem("edu_stu")||"",
   code:localStorage.getItem("edu_code")||"MATH2026",
   skillId:"M1-01A",
-  phase:"core", /* core 核心題 -> var 變化題與理由 -> done 完成 */
+  phase:"core",
   tries:0,
   lastDiag:"",
   msg:"",
@@ -186,10 +188,17 @@ function logAnswer(qTxt,ansTxt,ok,errInfo,hLv){
 
 function goTab(t){
   S.tab=t; S.msg="";
+  if(t==="student") S.studentView="home";
   var e=document.getElementById("err");
   if(e){e.style.display="none";e.textContent="";}
   render();
 }
+
+window.__openLegacyStudentWorkspace=function(){
+  S.studentView="practice";
+  S.msg="";
+  render();
+};
 
 function pickSkill(id){
   S.skillId=id; S.phase="core"; S.tries=0; S.lastDiag=""; S.msg="";
@@ -314,7 +323,13 @@ function render(){
   var h="";
 
   if(S.tab==="student"){
-    h+="<label>學生姓名</label><input id='stuInp' value='"+esc(S.stu)+"' placeholder='例如：陳小華'>" +
+    if(S.studentView==="home" && window.StudentHomeModule && typeof window.StudentHomeModule.render==="function"){
+      window.StudentHomeModule.render(v);
+      return;
+    }
+
+    h+="<button class='btn btn-soft' onclick='S.studentView=\"home\";render()'>← 回到宇宙探索首頁</button>" +
+      "<label>學生姓名</label><input id='stuInp' value='"+esc(S.stu)+"' placeholder='例如：陳小華'>" +
       "<label>班級邀請碼</label><input id='codeInp' value='"+esc(S.code)+"'>" +
       "<div style='font-size:12px;font-weight:700;color:#064e3b;margin-top:4px'>M1 微技能地圖（點選切換）</div>" +
       "<div class='skill-grid'>";
@@ -370,6 +385,12 @@ function render(){
 }
 
 render();
+</script>
+<script src="./student-home.js"></script>
+<script>
+if (S.tab === "student" && S.studentView === "home" && window.StudentHomeModule) {
+  window.StudentHomeModule.render(document.getElementById("view"));
+}
 </script>
 </body>
 </html>
