@@ -1,15 +1,198 @@
-/* 第二階段：學生端教學引擎（獨立模組，不修改既有教材與後端結構） */
+/* 第二階段：學生端教學引擎 - 第一輪品質修正（獨立模組） */
 (function () {
   "use strict";
 
-  // 1. 可調整實驗門檻（非教育研究驗證定論，僅供測試調整）
-  var EXPERIMENTAL_THRESHOLDS = {
-    masteryMinAccuracy: 0.75,      // 達「精熟」最低正確率實驗門檻
-    progressMinAccuracy: 0.45,     // 達「穩定進步」最低正確率實驗門檻
-    maxHintsForMastery: 2          // 單次作答使用提示層級超過此數值時，傾向「穩定進步」或「需要加強」
+  // 0. 可調整實驗參數（非教育研究驗證標準，僅供測試調整）
+  var EXPERIMENTAL_PARAMS = {
+    minValidAttemptsPerDimension: 2, // 各維度有效作答數低於此門檻時顯示「尚需更多練習」
+    masteryMinFirstTryRatio: 0.75,   // 達「精熟」之首次作答正確率實驗門檻
+    progressMinRatio: 0.40           // 達「穩定進步」之作答正確率實驗門檻
   };
 
-  // 2. 既有 M1-01、M1-02 教材與六階段設定（完整保留原有內容）
+  // 1. 內部錯誤分類定義（代碼僅供系統使用，不直接顯示給學生）
+  var ERROR_TAXONOMY = {
+    E01: "定義理解錯誤",
+    E02: "性質使用錯誤",
+    E03: "忽略適用條件",
+    E04: "運算錯誤",
+    E05: "推論錯誤",
+    E06: "題意理解或建模錯誤",
+    E07: "抄寫或計算疏失"
+  };
+
+  // 2. 具體錯誤補救策略（依具體錯誤成因提供不同引導，不與錯誤代碼綁死單一罐頭字）
+  function resolveSpecificRemediation(errorCode, rawAnswer, node, stage) {
+    var ans = String(rawAnswer || "").trim();
+
+    if (errorCode === "E01") {
+      if (node.id === "M1-01" && (ans.indexOf("6") !== -1 || ans.indexOf("15") !== -1 || ans.indexOf("× 3") !== -1 || ans.indexOf("×3") !== -1)) {
+        return {
+          causeKey: "exponent_as_product",
+          encouragement: "你把次方聯想到乘法，方向很接近，不過「a 的 n 次方」是指 n 個 a 連乘，不是乘以 n。",
+          coaching: "把底數寫出來連乘看看：如果是 2 的 3 次方，是 2 × 2 × 2，而不是 2 × 3。"
+        };
+      }
+      if (node.id === "M1-02" && ans.indexOf("0") !== -1) {
+        return {
+          causeKey: "zero_exponent_equals_zero",
+          encouragement: "看到 0 次方想到 0 是很直覺的想法，但在指數規定裡，非零數的 0 次方結果是 1，不是 0。",
+          coaching: "試著用除法規律想一想：同一個非零數自己除自己（例如 5^2 ÷ 5^2）結果是多少？"
+        };
+      }
+      return {
+        causeKey: "general_definition",
+        encouragement: "我們先回到這個觀念的核心定義，看看題目要表達的是哪一種關係。",
+        coaching: "先用自己的話說出底數與次方各自代表什麼，再判斷算式。"
+      };
+    }
+
+    if (errorCode === "E02") {
+      if (ans.indexOf("-24") !== -1 || ans.indexOf("-9") !== -1 || ans.indexOf("9") !== -1) {
+        return {
+          causeKey: "bracket_vs_sign",
+          encouragement: "這題的關鍵在於「括號有沒有把負號包進去」以及「奇偶數次方對正負號的影響」。",
+          coaching: "先分開看每一項：有括號時次方作用在整個括號內；沒括號時先算次方再看前面的負號。"
+        };
+      }
+      return {
+        causeKey: "property_misuse",
+        encouragement: "性質運用上有一點小偏差，我們先確認每一步適用的運算規則。",
+        coaching: "把算式拆成較小的步驟，逐項檢查是否符合指數規則。"
+      };
+    }
+
+    if (errorCode === "E03") {
+      return {
+        causeKey: "missing_condition",
+        encouragement: "差一點就抓到了！這類題目除了算式外，還要特別留意「底數不能為 0」的限制條件。",
+        coaching: "把次方底數的整串式子拿出來，想想它「不能等於 0」會推導出什麼條件。"
+      };
+    }
+
+    if (errorCode === "E04") {
+      if (ans.indexOf("-") !== -1) {
+        return {
+          causeKey: "negative_multiplication",
+          encouragement: "計算時在正負號相乘或相加這一步遇到小阻礙，我們把正負號分開處理會更清楚。",
+          coaching: "先決定每一項的正負號（奇數個負號為負、偶數個負號為正），再算數字大小。"
+        };
+      }
+      return {
+        causeKey: "arithmetic_step",
+        encouragement: "觀念方向已經有了，只是中間數字運算還需要再確認一下。",
+        coaching: "先把每個次方項算出數值寫在旁邊，最後再做加減。"
+      };
+    }
+
+    if (errorCode === "E05") {
+      return {
+        causeKey: "reasoning_incomplete",
+        encouragement: "你的作答有提到部分線索，但推論的因果關聯還不夠完整。",
+        coaching: "試著用「因為……所以……」把你的觀察與結論串起來。"
+      };
+    }
+
+    if (errorCode === "E06") {
+      return {
+        causeKey: "modeling_or_empty",
+        encouragement: "題目條件與你的作答之間還需要多一點對齊，我們先看清楚題目問的是什麼。",
+        coaching: "先把題目給的已知數值與要算的目標圈出來，再決定要用哪個觀念。"
+      };
+    }
+
+    // E07
+    return {
+      causeKey: "careless_slip",
+      encouragement: "可能是看題或抄寫時不小心看漏了符號或數字，這很常見，放慢速度再看一次。",
+      coaching: "對照題目上的數字與正負號，逐字檢查一次再送出。"
+    };
+  }
+
+  // 3. 文字解釋判斷器（不只看單一關鍵字，區分概念正確 / 部分正確 / 無法判斷，並預留 AI 語意分析介面）
+  var SemanticAnalyzerHook = {
+    // 未來可掛載外部 AI 語意分析函式：(payload) => ({ verdict: "pass"|"partial"|"unclear", reason: "" })
+    customAnalyzer: null,
+    analyzeExplanation: function (payload) {
+      if (typeof this.customAnalyzer === "function") {
+        return this.customAnalyzer(payload);
+      }
+
+      var text = String((payload && payload.answer) || "").trim();
+      var lower = text.toLowerCase();
+
+      // 若只輸入極短單詞或單一字（「正」、「負」、「1」等），判定為無法可靠判斷，要求補充說明
+      if (text.length <= 1 || /^[\+\-]?\d+$/.test(text)) {
+        return {
+          verdict: "unclear",
+          errorCode: "E05",
+          supplementPrompt:
+            "只寫單一字詞或數字還看不出你的想法喔！請用完整一點的句子說明「為什麼會這樣」或「你是怎麼推想的」。"
+        };
+      }
+
+      if (payload.nodeId === "M1-01") {
+        var mentionsSign = lower.indexOf("負") !== -1 || lower.indexOf("正") !== -1 || lower.indexOf("正負") !== -1;
+        var mentionsParityOrBracket =
+          lower.indexOf("奇") !== -1 ||
+          lower.indexOf("偶") !== -1 ||
+          lower.indexOf("括號") !== -1 ||
+          lower.indexOf("連乘") !== -1 ||
+          lower.indexOf("次") !== -1;
+
+        if (mentionsSign && mentionsParityOrBracket) {
+          return { verdict: "pass", errorCode: null };
+        }
+        if (mentionsSign || mentionsParityOrBracket) {
+          return {
+            verdict: "partial",
+            errorCode: "E05",
+            supplementPrompt:
+              "你已經提到一部分概念了！請再補充說明「奇數次方與偶數次方」或「括號範圍」如何影響正負號。"
+          };
+        }
+        return {
+          verdict: "unclear",
+          errorCode: "E01",
+          supplementPrompt:
+            "這段說明還沒有連結到指數的連乘或正負號規則，請試著說明次方次數與結果正負的關聯。"
+        };
+      }
+
+      // M1-02 零指數除法規律說明
+      var mentionsDivisionOrSame =
+        lower.indexOf("除") !== -1 ||
+        lower.indexOf("相減") !== -1 ||
+        lower.indexOf("自己") !== -1 ||
+        lower.indexOf("相同") !== -1;
+      var mentionsOneOrNonZero =
+        lower.indexOf("1") !== -1 ||
+        lower.indexOf("一") !== -1 ||
+        lower.indexOf("不為 0") !== -1 ||
+        lower.indexOf("不為0") !== -1 ||
+        lower.indexOf("非零") !== -1 ||
+        lower.indexOf("≠") !== -1;
+
+      if (mentionsDivisionOrSame && mentionsOneOrNonZero) {
+        return { verdict: "pass", errorCode: null };
+      }
+      if (mentionsDivisionOrSame || mentionsOneOrNonZero) {
+        return {
+          verdict: "partial",
+          errorCode: "E05",
+          supplementPrompt:
+            "你抓到了一半的線索！請再把「相同非零數相除為 1」或「指數相減得到 0 次方」的關聯寫清楚。"
+        };
+      }
+      return {
+        verdict: "unclear",
+        errorCode: "E01",
+        supplementPrompt:
+          "目前的說明還看不出與除法規律或非零底數的關聯，請試著用除法算式或自己的話再補充說明。"
+      };
+    }
+  };
+
+  // 4. 既有 M1-01、M1-02 教材（完整保留原始教材內容）與修正後教學／補救設定
   var KNOWLEDGE_NODES = {
     "M1-01": {
       id: "M1-01",
@@ -20,29 +203,20 @@
         "1. 定義：設 a 為任意實數，n 為正整數，a^n 表示 n 個 a 連續相乘（a × a × ... × a，共 n 個）。\n" +
         "2. 正例：2^3 = 2 × 2 × 2 = 8；(-3)^2 = (-3) × (-3) = 9。\n" +
         "3. 反例與提醒：2^3 不是 2 × 3 = 6；-3^2 代表 -(3 × 3) = -9，與 (-3)^2 不同。",
-      // 階段 2：自然提及相關觀念，但不直接重貼階段 1 教材全文
       stage2Guide: {
         questionId: "M1-01-S2-GUIDE",
         dimension: "推理能力",
         prompt:
-          "想一想：當底數是負數時，次方次數是奇數或偶數，結果的正負號有什麼不同？試著用你自己的話說明為什麼 (-2)^3 是負數，但 (-2)^4 是正數。",
-        expectedAnswerDesc: "說明奇數次方結果為負、偶數次方結果為正（如 -8 與 +16 的乘號奇偶性）",
-        validate: function (raw) {
-          var s = String(raw || "").trim().toLowerCase();
-          if (!s) return { ok: false, errorCode: "E06" };
-          if (s.length < 3) return { ok: false, errorCode: "E05" };
-          var hasSignOrParity =
-            s.indexOf("奇") !== -1 ||
-            s.indexOf("偶") !== -1 ||
-            s.indexOf("負") !== -1 ||
-            s.indexOf("正") !== -1 ||
-            s.indexOf("-8") !== -1 ||
-            s.indexOf("16") !== -1;
-          if (!hasSignOrParity) return { ok: false, errorCode: "E01" };
-          return { ok: true, errorCode: null };
+          "想一想：當底數是負數時，次方次數是奇數或偶數，結果的正負號有什麼不同？請用自己的話說明為什麼 (-2)^3 與 (-2)^4 的正負號不同。",
+        expectedAnswerDesc: "說明奇數次方與偶數次方（或括號連乘）對正負號的影響",
+        validate: function (raw, nodeId) {
+          return SemanticAnalyzerHook.analyzeExplanation({
+            nodeId: nodeId,
+            stage: 2,
+            answer: raw
+          });
         }
       },
-      // 階段 3：理解檢查
       stage3Check: {
         questionId: "M1-01-S3-CHECK",
         dimension: "概念理解",
@@ -54,14 +228,13 @@
         expectedAnswer: "B",
         validate: function (raw) {
           var u = String(raw || "").trim().toUpperCase();
-          if (!u) return { ok: false, errorCode: "E06" };
-          if (u === "B") return { ok: true, errorCode: null };
-          if (u === "A") return { ok: false, errorCode: "E03" }; // 忽略括號與負號作用範圍條件
-          if (u === "C") return { ok: false, errorCode: "E01" }; // 混淆次方與乘法定義
-          return { ok: false, errorCode: "E05" };
+          if (!u) return { verdict: "unclear", ok: false, errorCode: "E06", supplementPrompt: "請先輸入選項 A、B 或 C。" };
+          if (u === "B") return { verdict: "pass", ok: true, errorCode: null };
+          if (u === "A") return { verdict: "fail", ok: false, errorCode: "E02" };
+          if (u === "C") return { verdict: "fail", ok: false, errorCode: "E01" };
+          return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入 A、B 或 C 其中一個選項，並可順便想想看次方作用在誰身上。" };
         }
       },
-      // 階段 4：互動練習
       stage4Practice: {
         questionId: "M1-01-S4-PRACTICE",
         dimension: "基礎運算",
@@ -69,34 +242,40 @@
         expectedAnswer: "17",
         validate: function (raw) {
           var t = String(raw || "").trim();
-          if (!t) return { ok: false, errorCode: "E06" };
-          if (t === "17") return { ok: true, errorCode: null };
-          if (t === "14" || t === "0" || t === "-1") return { ok: false, errorCode: "E02" };
-          if (t === "15" || t === "12") return { ok: false, errorCode: "E07" };
-          return { ok: false, errorCode: "E04" };
+          if (!t) return { verdict: "unclear", ok: false, errorCode: "E06", supplementPrompt: "請先輸入計算結果。" };
+          if (!/^[\+\-]?\d+$/.test(t)) {
+            return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "這題需要算出最後的整數數值，請輸入數字結果。" };
+          }
+          if (t === "17") return { verdict: "pass", ok: true, errorCode: null };
+          if (t === "14" || t === "0" || t === "-1") return { verdict: "fail", ok: false, errorCode: "E02" };
+          if (t === "15" || t === "12") return { verdict: "fail", ok: false, errorCode: "E07" };
+          return { verdict: "fail", ok: false, errorCode: "E04" };
         }
       },
-      // 階段 5：個人化補救題（不同數字、不同情境，測相同觀念）
+      // 修正後補救題：合理情境（冷藏庫溫度變化與正方形地墊面積），不出現負數邊長
       stage5Remedial: {
         questionId: "M1-01-S5-REMEDIAL",
         dimension: "應用能力",
-        contextNote: "情境轉換：溫度變化與面積推算",
+        contextNote: "情境轉換：實驗室溫度調整與正方形地墊面積（皆為合理數值）",
         prompt:
-          "【個人化補救題】某實驗室在連續 3 小時內，每小時溫度變化倍率為 (-2)；另有一塊正方形磁磚邊長為 (-4) 公尺（以有向長度表示面積計算）。請問 (-2)^3 + (-4)^2 的數值是多少？",
-        expectedAnswer: "8",
+          "【個人化補救題】某實驗室連續 2 小時每小時降溫 (-3) 度的算式概念為 (-3)^2，另有一塊邊長為 2 公尺的正方形地墊，面積為 2^3 平方公尺（代表 2 連乘 3 次）。請問 (-3)^2 + 2^3 的總值是多少？",
+        expectedAnswer: "17",
         validate: function (raw) {
           var t = String(raw || "").trim();
-          if (!t) return { ok: false, errorCode: "E06" };
-          if (t === "8") return { ok: true, errorCode: null };
-          if (t === "-24") return { ok: false, errorCode: "E02" };
-          return { ok: false, errorCode: "E04" };
+          if (!t) return { verdict: "unclear", ok: false, errorCode: "E06", supplementPrompt: "請輸入計算結果。" };
+          if (!/^[\+\-]?\d+$/.test(t)) {
+            return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入數值結果。" };
+          }
+          if (t === "17") return { verdict: "pass", ok: true, errorCode: null };
+          if (t === "1" || t === "-1") return { verdict: "fail", ok: false, errorCode: "E02" };
+          return { verdict: "fail", ok: false, errorCode: "E04" };
         }
       },
       hints: {
-        H1: "先回想次方代表「連續相乘的次數」，並留意括號有沒有把負號一起包住。",
+        H1: "先回想次方代表「連續相乘的次數」，並留意括號有沒有把負號包進去。",
         H2: "你可以先拆成個別項目的正負號與連乘算式，再把結果合起來看。",
-        H3: "以 2^3 + (-3)^2 為例：先算 2×2×2 = 8，再算 (-3)×(-3) = 9，最後將兩數相加。",
-        H4: "完整解析：2^3 = 8，(-3)^2 = (-3)×(-3) = 9，8 + 9 = 17。關鍵在於看清楚次方作用在誰身上。"
+        H3: "先算 2^3 = 2 × 2 × 2 = 8，再算 (-3)^2 = (-3) × (-3) = 9，最後將兩數相加。",
+        H4: "完整解析：2^3 = 8，(-3)^2 = 9，8 + 9 = 17。關鍵在於看清楚次方作用在誰身上。"
       }
     },
 
@@ -113,20 +292,14 @@
         questionId: "M1-02-S2-GUIDE",
         dimension: "推理能力",
         prompt:
-          "想一想：如果同底數相除時指數相減，例如 5^2 ÷ 5^2 會得到 5^0；從除法規律來看，為什麼非零數的 0 次方會規定為 1，而不是 0？",
-        expectedAnswerDesc: "用同底數相除或相同數相除等於 1 來說明為何 a^0 = 1（且 a ≠ 0）",
-        validate: function (raw) {
-          var s = String(raw || "").trim().toLowerCase();
-          if (!s) return { ok: false, errorCode: "E06" };
-          if (s.length < 2) return { ok: false, errorCode: "E05" };
-          var hasLogic =
-            s.indexOf("除") !== -1 ||
-            s.indexOf("自己") !== -1 ||
-            s.indexOf("1") !== -1 ||
-            s.indexOf("相減") !== -1 ||
-            s.indexOf("規律") !== -1;
-          if (!hasLogic) return { ok: false, errorCode: "E01" };
-          return { ok: true, errorCode: null };
+          "想一想：如果同底數相除時指數相減，例如 5^2 ÷ 5^2 會得到 5^0；從除法規律來看，為什麼非零數的 0 次方會規定為 1，而不是 0？請用自己的話說明。",
+        expectedAnswerDesc: "用相同非零數相除等於 1 或指數相減規則說明為何 a^0 = 1",
+        validate: function (raw, nodeId) {
+          return SemanticAnalyzerHook.analyzeExplanation({
+            nodeId: nodeId,
+            stage: 2,
+            answer: raw
+          });
         }
       },
       stage3Check: {
@@ -140,11 +313,11 @@
         expectedAnswer: "B",
         validate: function (raw) {
           var u = String(raw || "").trim().toUpperCase();
-          if (!u) return { ok: false, errorCode: "E06" };
-          if (u === "B") return { ok: true, errorCode: null };
-          if (u === "A") return { ok: false, errorCode: "E03" }; // 忽略底數不可為 0 的適用條件
-          if (u === "C") return { ok: false, errorCode: "E07" }; // 條件判斷方向偏差
-          return { ok: false, errorCode: "E01" };
+          if (!u) return { verdict: "unclear", ok: false, errorCode: "E06", supplementPrompt: "請先輸入選項 A、B 或 C。" };
+          if (u === "B") return { verdict: "pass", ok: true, errorCode: null };
+          if (u === "A") return { verdict: "fail", ok: false, errorCode: "E03" };
+          if (u === "C") return { verdict: "fail", ok: false, errorCode: "E07" };
+          return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入 A、B 或 C 其中一個選項。" };
         }
       },
       stage4Practice: {
@@ -154,65 +327,45 @@
         expectedAnswer: "8",
         validate: function (raw) {
           var t = String(raw || "").trim();
-          if (!t) return { ok: false, errorCode: "E06" };
-          if (t === "8") return { ok: true, errorCode: null };
-          if (t === "7" || t === "2") return { ok: false, errorCode: "E01" };
-          if (t === "9") return { ok: false, errorCode: "E07" };
-          return { ok: false, errorCode: "E04" };
+          if (!t) return { verdict: "unclear", ok: false, errorCode: "E06", supplementPrompt: "請先輸入計算結果。" };
+          if (!/^[\+\-]?\d+$/.test(t)) {
+            return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入數值結果。" };
+          }
+          if (t === "8") return { verdict: "pass", ok: true, errorCode: null };
+          if (t === "7" || t === "2" || t === "0") return { verdict: "fail", ok: false, errorCode: "E01" };
+          if (t === "9") return { verdict: "fail", ok: false, errorCode: "E07" };
+          return { verdict: "fail", ok: false, errorCode: "E04" };
         }
       },
+      // 修正後補救題：合理情境（社團活動分組與點數加成），清楚檢驗零指數觀念
       stage5Remedial: {
         questionId: "M1-02-S5-REMEDIAL",
         dimension: "應用能力",
-        contextNote: "情境轉換：密碼設定與變數條件",
+        contextNote: "情境轉換：班級讀書會分組與積分計算（皆為正整數情境）",
         prompt:
-          "【個人化補救題】某系統設定規則：當變數 k 滿足 (k + 4)^0 = 1 時，可啟用 1 組備援節點（值為 1），另有 2 組各為 3^1 的主節點。請問總節點數（1 + 3^1 + 3^1）是多少？（請同時留意 k 需滿足 k ≠ -4）",
-        expectedAnswer: "7",
+          "【個人化補救題】班級讀書會每組有 2^2 位成員，另有 1 個剛成立的觀察小組（以 4^0 代表 1 組）與 1 個特別嘉獎組（以 (-3)^0 代表 1 組）。請問這三個部分合起來共有幾組（4^0 + (-3)^0 + 2^2）？",
+        expectedAnswer: "6",
         validate: function (raw) {
           var t = String(raw || "").trim();
-          if (!t) return { ok: false, errorCode: "E06" };
-          if (t === "7") return { ok: true, errorCode: null };
-          if (t === "6" || t === "5") return { ok: false, errorCode: "E01" };
-          return { ok: false, errorCode: "E04" };
+          if (!t) return { verdict: "unclear", ok: false, errorCode: "E06", supplementPrompt: "請輸入組數計算結果。" };
+          if (!/^[\+\-]?\d+$/.test(t)) {
+            return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入數值結果。" };
+          }
+          if (t === "6") return { verdict: "pass", ok: true, errorCode: null };
+          if (t === "4" || t === "5") return { verdict: "fail", ok: false, errorCode: "E01" };
+          return { verdict: "fail", ok: false, errorCode: "E04" };
         }
       },
       hints: {
         H1: "先提醒自己：底數不為 0 時，零次方的結果是 1，而不是 0；同時底數本身不能為 0。",
         H2: "把算式拆成每一項分別算出來，再依加減順序合併，別急著心算整串。",
-        H3: "以 (-6)^0 + 2^3 - 5^0 為例：(-6)^0 = 1，2^3 = 8，5^0 = 1，先算 1 + 8 再減 1。",
-        H4: "完整解析：1 + 8 - 1 = 8。零指數的核心是「非零底數的零次方為 1，且底數不能為 0」。"
+        H3: "先算 (-6)^0 = 1，2^3 = 8，5^0 = 1，接著依序計算 1 + 8 - 1。",
+        H4: "完整解析：(-6)^0 = 1，2^3 = 8，5^0 = 1，1 + 8 - 1 = 8。非零數的零次方皆為 1。"
       }
     }
   };
 
-  // 3. 內部錯誤診斷回饋（不向學生暴露 E01-E07 代碼）
-  function buildStudentFriendlyFeedback(errorCode, hintLevel, node, answerText) {
-    var friendlyMap = {
-      E01: "你似乎對這個概念的定義還有些模糊，我們先放慢腳步，從概念的核心意思重新想一想。",
-      E02: "這一步的性質或規則運用好像有點卡住，先看看題目中底數與次方的關係。",
-      E03: "差一點就對了！你似乎忽略了這條規則的適用條件，先檢查一下底數或括號的限制。",
-      E04: "計算過程可能出現小偏差，我們把算式拆開一步一步算，不急著一次算完。",
-      E05: "你的想法很有起點，不過推論過程還少了一點連結，試著把理由說得更完整。",
-      E06: "看起來作答內容還不夠完整，試著寫出你的想法或算式，我們一起往下推。",
-      E07: "可能是看題或抄寫時不小心疏忽了，先深呼吸確認一下數字與符號。"
-    };
-
-    var baseMsg = friendlyMap[errorCode] || "這題先別急，我們一起換個角度拆解看看。";
-    var hintText = node.hints[hintLevel] || node.hints.H1;
-
-    return (
-      baseMsg +
-      "\n（你剛剛輸入：「" +
-      answerText +
-      "」）\n" +
-      "【" +
-      hintLevel +
-      " 引導】" +
-      hintText
-    );
-  }
-
-  // 4. 學習紀錄儲存層（與教學邏輯分離，方便第三階段接入帳號與雲端）
+  // 5. 學習紀錄儲存層（與教學邏輯分離）
   var STORAGE_KEY = "ai_edu_phase2_records_v1";
 
   var TeachingRecordRepository = {
@@ -229,7 +382,7 @@
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(allMap));
       } catch (e) {
-        // 忽略本機儲存配額例外
+        // 忽略本機儲存例外
       }
     },
     getNodeSession: function (studentId, nodeId) {
@@ -266,99 +419,144 @@
     }
   };
 
-  // 5. 動態精熟度計算器（依實際作答紀錄，不使用虛構分數或固定精熟度）
-  function evaluateMasteryFromLogs(logs) {
+  // 6. 五維度獨立精熟度計算器（區分首次作答與重複練習、設最低有效作答數、不混算總正確率）
+  function evaluateFiveDimensions(logs, remedialPassed) {
     var list = Array.isArray(logs) ? logs : [];
-    var total = list.length;
-    var correctCount = list.filter(function (item) {
-      return Boolean(item.isCorrect);
-    }).length;
-    var accuracy = total > 0 ? correctCount / total : 0;
+    var minReq = EXPERIMENTAL_PARAMS.minValidAttemptsPerDimension;
 
-    var maxHintUsed = 0;
-    var remedialAttempted = false;
-    var remedialSuccess = false;
-    var dimensions = {
-      概念理解: "尚未作答",
-      基礎運算: "尚未作答",
-      推理能力: "尚未作答",
-      應用能力: "尚未作答",
-      獨立完成程度: "尚未作答"
+    var dimsOrder = ["概念理解", "基礎運算", "推理能力", "應用能力", "獨立完成程度"];
+    var perDimLogs = {
+      概念理解: [],
+      基礎運算: [],
+      推理能力: [],
+      應用能力: []
     };
 
-    var dimStats = {};
+    var firstTryCount = 0;
+    var firstTryCorrectCount = 0;
+    var repeatAttemptCount = 0;
+    var repeatCorrectCount = 0;
+    var maxHintUsed = 0;
+
+    // 依題目識別碼統計作答次數，區分首次作答與重複練習
+    var qAttemptCounter = {};
+
     list.forEach(function (item) {
+      var qKey = item.questionId || "UNKNOWN";
+      qAttemptCounter[qKey] = (qAttemptCounter[qKey] || 0) + 1;
+      var attemptNum = qAttemptCounter[qKey];
+      var isFirstTry = attemptNum === 1;
+
+      if (isFirstTry) {
+        firstTryCount += 1;
+        if (item.isCorrect) firstTryCorrectCount += 1;
+      } else {
+        repeatAttemptCount += 1;
+        if (item.isCorrect) repeatCorrectCount += 1;
+      }
+
       var hNum = item.hintLevel ? parseInt(String(item.hintLevel).replace("H", ""), 10) || 0 : 0;
       if (hNum > maxHintUsed) maxHintUsed = hNum;
-      if (item.isRemedial) {
-        remedialAttempted = true;
-        if (item.isCorrect) remedialSuccess = true;
-      }
-      if (item.dimension) {
-        if (!dimStats[item.dimension]) dimStats[item.dimension] = { ok: 0, all: 0 };
-        dimStats[item.dimension].all += 1;
-        if (item.isCorrect) dimStats[item.dimension].ok += 1;
+
+      if (item.dimension && perDimLogs[item.dimension]) {
+        perDimLogs[item.dimension].push({
+          isCorrect: Boolean(item.isCorrect),
+          isFirstTry: isFirstTry
+        });
       }
     });
 
-    Object.keys(dimStats).forEach(function (dimKey) {
-      var st = dimStats[dimKey];
-      dimensions[dimKey] = st.ok + "/" + st.all + " 次正確";
+    var dimensionResults = {};
+    var qualifiedDimensionsCount = 0;
+    var masteredDimensionsCount = 0;
+
+    ["概念理解", "基礎運算", "推理能力", "應用能力"].forEach(function (dimName) {
+      var arr = perDimLogs[dimName];
+      var validCount = arr.length;
+      if (validCount < minReq) {
+        dimensionResults[dimName] = {
+          state: "尚需更多練習",
+          detail: "有效作答 " + validCount + "/" + minReq + " 筆（實驗參數門檻）"
+        };
+      } else {
+        qualifiedDimensionsCount += 1;
+        var dimFirsts = arr.filter(function (x) { return x.isFirstTry; });
+        var dimFirstOk = dimFirsts.filter(function (x) { return x.isCorrect; }).length;
+        var ratio = dimFirsts.length > 0 ? dimFirstOk / dimFirsts.length : 0;
+        var dimState = ratio >= EXPERIMENTAL_PARAMS.masteryMinFirstTryRatio ? "精熟" : ratio >= EXPERIMENTAL_PARAMS.progressMinRatio ? "穩定進步" : "需要加強";
+        if (dimState === "精熟") masteredDimensionsCount += 1;
+        dimensionResults[dimName] = {
+          state: dimState,
+          detail: "首次作答 " + dimFirstOk + "/" + dimFirsts.length + " 正確（累計 " + validCount + " 次）"
+        };
+      }
     });
 
-    if (total === 0) {
-      dimensions["獨立完成程度"] = "尚無紀錄";
-      return {
-        statusLabel: "需要加強",
-        summaryNote: "尚無實際作答紀錄，建議從第一階段教材與引導題開始累積。",
-        accuracyText: "0%（0/0）",
-        dimensions: dimensions,
-        thresholds: EXPERIMENTAL_THRESHOLDS
+    // 第 5 維度：獨立完成程度（看首次作答是否少依賴提示，並納入補救題作為證據之一）
+    if (firstTryCount < minReq) {
+      dimensionResults["獨立完成程度"] = {
+        state: "尚需更多練習",
+        detail: "首次作答 " + firstTryCount + "/" + minReq + " 筆" + (remedialPassed ? "・補救題已通過（證據之一）" : "")
+      };
+    } else {
+      qualifiedDimensionsCount += 1;
+      var indState = "需要加強";
+      if (firstTryCorrectCount / firstTryCount >= EXPERIMENTAL_PARAMS.masteryMinFirstTryRatio && maxHintUsed <= 2) {
+        indState = "精熟";
+        masteredDimensionsCount += 1;
+      } else if (firstTryCorrectCount / firstTryCount >= EXPERIMENTAL_PARAMS.progressMinRatio) {
+        indState = "穩定進步";
+      }
+      dimensionResults["獨立完成程度"] = {
+        state: indState,
+        detail:
+          "首次正確 " +
+          firstTryCorrectCount +
+          "/" +
+          firstTryCount +
+          "（重複練習 " +
+          repeatCorrectCount +
+          "/" +
+          repeatAttemptCount +
+          " 正確，不灌水）" +
+          (remedialPassed ? "・補救題已通過" : "")
       };
     }
 
-    var independentLabel =
-      maxHintUsed === 0
-        ? "未依賴提示作答"
-        : maxHintUsed <= EXPERIMENTAL_THRESHOLDS.maxHintsForMastery
-          ? "曾使用輕量提示（最高 H" + maxHintUsed + "）"
-          : "曾使用較多提示（最高 H" + maxHintUsed + "）";
-    if (remedialAttempted) {
-      independentLabel += remedialSuccess ? "・補救題已通過" : "・補救題待通過";
-    }
-    dimensions["獨立完成程度"] = independentLabel;
-
-    var statusLabel = "需要加強";
-    if (
-      accuracy >= EXPERIMENTAL_THRESHOLDS.masteryMinAccuracy &&
-      maxHintUsed <= EXPERIMENTAL_THRESHOLDS.maxHintsForMastery &&
-      (!remedialAttempted || remedialSuccess)
-    ) {
-      statusLabel = "精熟";
-    } else if (accuracy >= EXPERIMENTAL_THRESHOLDS.progressMinAccuracy) {
-      statusLabel = "穩定進步";
+    // 整體狀態：絕不只答對 1 題就判精熟，且需有足夠維度達標
+    var overallStatus = "尚需更多練習";
+    if (qualifiedDimensionsCount < 2 || firstTryCount < 2) {
+      overallStatus = "尚需更多練習";
+    } else if (masteredDimensionsCount >= 3 && firstTryCorrectCount >= 2 && maxHintUsed <= 2) {
+      overallStatus = "精熟";
+    } else if (firstTryCorrectCount >= 1 || repeatCorrectCount >= 1) {
+      overallStatus = "穩定進步";
+    } else {
+      overallStatus = "需要加強";
     }
 
     return {
-      statusLabel: statusLabel,
-      summaryNote:
-        "依目前 " +
-        total +
-        " 筆實際作答計算（實驗參數門檻：精熟≥" +
-        Math.round(EXPERIMENTAL_THRESHOLDS.masteryMinAccuracy * 100) +
-        "%、穩定進步≥" +
-        Math.round(EXPERIMENTAL_THRESHOLDS.progressMinAccuracy * 100) +
-        "%）。",
-      accuracyText: Math.round(accuracy * 100) + "%（" + correctCount + "/" + total + "）",
-      dimensions: dimensions,
-      thresholds: EXPERIMENTAL_THRESHOLDS
+      overallStatus: overallStatus,
+      dimensionsOrder: dimsOrder,
+      dimensions: dimensionResults,
+      summaryLine:
+        "實驗參數計算｜首次作答正確：" +
+        firstTryCorrectCount +
+        "/" +
+        firstTryCount +
+        "｜重複練習正確：" +
+        repeatCorrectCount +
+        "/" +
+        repeatAttemptCount +
+        "｜補救題證據：" +
+        (remedialPassed ? "已通過" : "未通過或尚未作答"),
+      params: EXPERIMENTAL_PARAMS
     };
   }
 
-  // 6. 教學引擎核心狀態與推進邏輯
+  // 7. 教學引擎核心狀態與推進邏輯
   var engineState = {
-    selectedNodeId: "M1-01",
-    answerDraft: ""
+    selectedNodeId: "M1-01"
   };
 
   function getCurrentStudentId() {
@@ -369,204 +567,4 @@
   }
 
   function getNextHintLevel(session) {
-    var order = ["H1", "H2", "H3", "H4"];
-    var idx = Math.min(session.hintLevelIndex || 0, order.length - 1);
-    session.hintLevelIndex = Math.min((session.hintLevelIndex || 0) + 1, order.length - 1);
-    return order[idx];
-  }
-
-  function advanceToStage2(studentId, nodeId) {
-    var session = TeachingRecordRepository.getNodeSession(studentId, nodeId);
-    // 進入引導問題後，鎖定階段 1 不可返回教材
-    session.unlockedStage = Math.max(session.unlockedStage, 2);
-    session.currentStage = 2;
-    session.lastFeedback = "已進入「引導問題」。本階段起不再返回階段 1 教材，請依提示思考後作答。";
-    session.lastFeedbackType = "ok";
-    TeachingRecordRepository.saveNodeSession(session);
-  }
-
-  function handleStageSubmit(studentId, nodeId, userAnswer) {
-    var node = KNOWLEDGE_NODES[nodeId];
-    var session = TeachingRecordRepository.getNodeSession(studentId, nodeId);
-    var stage = session.currentStage;
-
-    var activeSpec = null;
-    var isRemedial = false;
-    if (stage === 2) activeSpec = node.stage2Guide;
-    else if (stage === 3) activeSpec = node.stage3Check;
-    else if (stage === 4) activeSpec = node.stage4Practice;
-    else if (stage === 5) {
-      activeSpec = node.stage5Remedial;
-      isRemedial = true;
-    }
-
-    if (!activeSpec) return;
-
-    var checkResult = activeSpec.validate(userAnswer);
-    var hintUsedNow = null;
-
-    if (!checkResult.ok) {
-      hintUsedNow = getNextHintLevel(session);
-    }
-
-    var logEntry = {
-      knowledgeNode: node.code,
-      questionId: activeSpec.questionId,
-      dimension: activeSpec.dimension,
-      studentAnswer: userAnswer,
-      expectedAnswer: activeSpec.expectedAnswer || activeSpec.expectedAnswerDesc || "",
-      isCorrect: checkResult.ok,
-      errorCode: checkResult.ok ? null : checkResult.errorCode,
-      hintLevel: hintUsedNow,
-      completedAt: new Date().toISOString(),
-      isRemedial: isRemedial,
-      remedialPassed: isRemedial ? checkResult.ok : false
-    };
-
-    session = TeachingRecordRepository.appendAnswerLog(studentId, nodeId, logEntry);
-
-    if (checkResult.ok) {
-      session.hintLevelIndex = 0;
-      if (stage === 2) {
-        session.currentStage = 3;
-        session.unlockedStage = Math.max(session.unlockedStage, 3);
-        session.lastFeedback = "觀念引導很有想法！現在進入「理解檢查」，確認你對條件與算式的掌握。";
-        session.lastFeedbackType = "ok";
-      } else if (stage === 3) {
-        session.currentStage = 4;
-        session.unlockedStage = Math.max(session.unlockedStage, 4);
-        session.lastFeedback = "理解檢查通過！接著進入「互動練習」，實際動手算算看。";
-        session.lastFeedbackType = "ok";
-      } else if (stage === 4) {
-        // 階段 4 完成後，進入階段 5 個人化補救（以不同情境測相同觀念）
-        session.currentStage = 5;
-        session.unlockedStage = Math.max(session.unlockedStage, 5);
-        session.lastFeedback =
-          "互動練習完成！接下來進入「個人化補救」，我們換一個不同情境的題目，檢驗你是否真正掌握這個觀念。";
-        session.lastFeedbackType = "ok";
-      } else if (stage === 5) {
-        session.remedialPassed = true;
-        session.currentStage = 6;
-        session.unlockedStage = Math.max(session.unlockedStage, 6);
-        session.lastFeedback = "補救題也順利完成！現在進入「學習總結」，查看你依據實際作答累積的學習狀態。";
-        session.lastFeedbackType = "ok";
-      }
-      TeachingRecordRepository.saveNodeSession(session);
-    } else {
-      session.lastFeedback = buildStudentFriendlyFeedback(
-        checkResult.errorCode,
-        hintUsedNow,
-        node,
-        userAnswer
-      );
-      session.lastFeedbackType = "guide";
-      TeachingRecordRepository.saveNodeSession(session);
-    }
-  }
-
-  function renderStageBody(node, session, masteryEval) {
-    var st = session.currentStage;
-    var html = "";
-
-    if (st === 1) {
-      html +=
-        "<h4 class=\"te-card-title\">階段 1：教材學習</h4>" +
-        "<div class=\"te-sub-box\">" + esc(node.stage1Material) + "</div>" +
-        "<div class=\"te-actions\">" +
-        "<button type=\"button\" class=\"te-btn\" id=\"te-to-stage2\">完成教材，進入階段 2（引導問題）</button>" +
-        "</div>";
-    } else if (st === 2 || st === 3 || st === 4 || st === 5) {
-      var qObj =
-        st === 2
-          ? node.stage2Guide
-          : st === 3
-            ? node.stage3Check
-            : st === 4
-              ? node.stage4Practice
-              : node.stage5Remedial;
-
-      var stageTitle =
-        st === 2
-          ? "階段 2：引導問題（已鎖定教材，不返回階段 1）"
-          : st === 3
-            ? "階段 3：理解檢查"
-            : st === 4
-              ? "階段 4：互動練習"
-              : "階段 5：個人化補救（不同情境檢驗相同觀念）";
-
-      html += "<h4 class=\"te-card-title\">" + esc(stageTitle) + "</h4>";
-      if (st === 5 && qObj.contextNote) {
-        html += "<div class=\"te-sub-box\">" + esc(qObj.contextNote) + "</div>";
-      }
-      html +=
-        "<p class=\"te-text\">" + esc(qObj.prompt) + "</p>" +
-        "<input type=\"text\" class=\"te-input\" id=\"te-ans-input\" placeholder=\"請輸入你的想法或答案\" />" +
-        "<div class=\"te-actions\">" +
-        "<button type=\"button\" class=\"te-btn\" id=\"te-submit-ans\">送出作答</button>" +
-        "</div>";
-    } else {
-      // 階段 6：學習總結（完全依實際作答紀錄計算）
-      html +=
-        "<h4 class=\"te-card-title\">階段 6：學習總結（實驗參數測試模式）</h4>" +
-        "<div class=\"te-sub-box\">" +
-        "<strong>目前精熟度狀態：</strong>" + esc(masteryEval.statusLabel) + "\n" +
-        "<strong>作答正確率：</strong>" + esc(masteryEval.accuracyText) + "\n" +
-        "<strong>補救題通過狀態：</strong>" + (session.remedialPassed ? "已通過" : "尚未通過或未觸發") + "\n" +
-        esc(masteryEval.summaryNote) +
-        "</div>" +
-        "<div class=\"te-dim-grid\">" +
-        Object.keys(masteryEval.dimensions)
-          .map(function (dim) {
-            return (
-              "<div class=\"te-dim-item\">" +
-              "<div class=\"te-dim-name\">" + esc(dim) + "</div>" +
-              "<div class=\"te-dim-val\">" + esc(masteryEval.dimensions[dim]) + "</div>" +
-              "</div>"
-            );
-          })
-          .join("") +
-        "</div>";
-
-      if (session.logs && session.logs.length > 0) {
-        html +=
-          "<div class=\"te-sub-box\"><strong>本次知識點作答紀錄明細：</strong><ul class=\"te-log-list\">" +
-          session.logs
-            .map(function (lg) {
-              return (
-                "<li>" +
-                esc(lg.questionId) +
-                "｜作答「" +
-                esc(lg.studentAnswer) +
-                "」｜" +
-                (lg.isCorrect ? "正確" : "需再釐清") +
-                (lg.hintLevel ? "｜提示 " + esc(lg.hintLevel) : "") +
-                (lg.isRemedial ? "｜補救題" : "") +
-                "</li>"
-              );
-            })
-            .join("") +
-          "</ul></div>";
-      }
-
-      html +=
-        "<div class=\"te-actions\">" +
-        "<button type=\"button\" class=\"te-btn secondary\" id=\"te-restart-node\">重新從階段 1 學習此知識點</button>" +
-        "</div>";
-    }
-
-    return html;
-  }
-
-  function esc(str) {
-    return String(str || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  function renderTeachingEngine(container) {
-    if (!container) return;
-    var studentId = getCurrentStudentId();
-    var node = KNOWLEDGE_NODES[engineState.selectedNodeId] || KNOWLEDGE_NODES["M1-01"];
-    var session = TeachingRecordRepository.getNodeSession(studentId, 
+    var order = ["H1", "H2",
