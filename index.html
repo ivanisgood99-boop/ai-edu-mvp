@@ -22,10 +22,7 @@
   <script>
     window.onerror = function (m, u, l) {
       var e = document.getElementById("err");
-      if (e) {
-        e.style.display = "block";
-        e.textContent = "JS錯誤: " + m + " (第" + l + "行)";
-      }
+      if (e) { e.style.display = "block"; e.textContent = "JS錯誤: " + m + " (第" + l + "行)" + (u ? " [" + u + "]" : ""); }
     };
   </script>
 </head>
@@ -50,60 +47,33 @@ var SB_KEY = "sb_publishable_z7l4i49w93dZ0yrR5SPbVw_ShVGKm0J";
 var ADMIN_KEY = "ADMIN2026";
 
 var S = {
-  tab: "student",
-  studentView: "home",
-  preferredNode: "M1-01",
-  stu: localStorage.getItem("edu_stu") || "",
-  code: localStorage.getItem("edu_code") || "MATH2026",
-  msg: "",
-  tName: localStorage.getItem("edu_tname") || "",
-  adminOk: sessionStorage.getItem("edu_adm") === "1"
+  tab: "student", studentView: "home", launchMode: "topic", preferredNode: "M1-01",
+  stu: localStorage.getItem("edu_stu") || "", code: localStorage.getItem("edu_code") || "MATH2026",
+  msg: "", tName: localStorage.getItem("edu_tname") || "", adminOk: sessionStorage.getItem("edu_adm") === "1"
 };
 
 function esc(x) {
-  return String(x || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  return String(x || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function callDb(tbl, method, q, body) {
-  var h = {
-    "apikey": SB_KEY,
-    "Authorization": "Bearer " + SB_KEY,
-    "Content-Type": "application/json"
-  };
+  var h = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json" };
   if (method === "POST") h["Prefer"] = "resolution=merge-duplicates,return=representation";
   if (method === "PATCH") h["Prefer"] = "return=representation";
-  return fetch(SB_URL + "/rest/v1/" + tbl + (q ? "?" + q : ""), {
-    method: method || "GET",
-    headers: h,
-    body: body ? JSON.stringify(body) : undefined
-  }).then(function (r) {
-    return r.text().then(function (t) {
-      if (!r.ok) throw new Error("HTTP " + r.status + " " + t);
-      return t ? JSON.parse(t) : null;
-    });
-  });
+  return fetch(SB_URL + "/rest/v1/" + tbl + (q ? "?" + q : ""), { method: method || "GET", headers: h, body: body ? JSON.stringify(body) : undefined })
+    .then(function (r) { return r.text().then(function (t) { if (!r.ok) throw new Error("HTTP " + r.status + " " + t); return t ? JSON.parse(t) : null; }); });
 }
-
 function goTab(t) {
-  S.tab = t;
-  S.msg = "";
+  S.tab = t; S.msg = "";
   if (t === "student") S.studentView = "home";
   var e = document.getElementById("err");
-  if (e) {
-    e.style.display = "none";
-    e.textContent = "";
-  }
+  if (e) { e.style.display = "none"; e.textContent = ""; }
   render();
 }
 
-window.__openLegacyStudentWorkspace = function (nodeId) {
-  if (nodeId === "M1-01" || nodeId === "M1-02") {
-    S.preferredNode = nodeId;
-  }
+window.__openTeachingEngineForNode = function (nodeId, mode) {
+  if (nodeId === "M1-01" || nodeId === "M1-02") S.preferredNode = nodeId;
+  S.launchMode = mode || "topic";
   S.studentView = "practice";
   S.msg = "";
   render();
@@ -112,10 +82,7 @@ window.__openLegacyStudentWorkspace = function (nodeId) {
 function checkTeacher() {
   var out = document.getElementById("tOut");
   var tn = (S.tName || "").trim();
-  if (!tn) {
-    out.textContent = "請先輸入已核准的教師姓名";
-    return;
-  }
+  if (!tn) { out.textContent = "請先輸入已核准的教師姓名"; return; }
   out.textContent = "驗證中...";
   callDb("teacher_applications", "GET", "teacher_name=eq." + encodeURIComponent(tn) + "&order=created_at.desc&limit=1")
     .then(function (apps) {
@@ -128,53 +95,32 @@ function checkTeacher() {
         callDb("answer_logs", "GET", "order=created_at.desc&limit=25")
       ]).then(function (res) {
         var ps = res[0] || [], ls = res[1] || [];
-        out.innerHTML =
-          "<strong>已核准教師：" + esc(tn) + "</strong>\n\n學生進度：\n" +
-          (ps.length ? ps.map(function (p) {
-            return "• " + esc(p.student_name) + "（" + esc(p.module_id) + "・" + esc(p.mastery_level) + "）";
-          }).join("\n") : "尚無") +
+        out.innerHTML = "<strong>已核准教師：" + esc(tn) + "</strong>\n\n學生進度：\n" +
+          (ps.length ? ps.map(function (p) { return "• " + esc(p.student_name) + "（" + esc(p.module_id) + "・" + esc(p.mastery_level) + "）"; }).join("\n") : "尚無") +
           "\n\n作答紀錄：\n" +
-          (ls.length ? ls.map(function (l) {
-            return "• " + esc(l.student_name) + "［" + esc(l.module_id) + "］「" + esc(l.student_answer) + "」→ " + (l.is_correct ? "正確" : "需再釐清");
-          }).join("\n") : "尚無");
+          (ls.length ? ls.map(function (l) { return "• " + esc(l.student_name) + "［" + esc(l.module_id) + "］「" + esc(l.student_answer) + "」→ " + (l.is_correct ? "正確" : "需再釐清"); }).join("\n") : "尚無");
       });
     });
 }
 
 function unlockAdm() {
   var k = document.getElementById("admKey").value.trim();
-  if (k === ADMIN_KEY) {
-    S.adminOk = true;
-    sessionStorage.setItem("edu_adm", "1");
-    S.msg = "";
-    render();
-    loadAdm();
-  } else {
-    S.msg = "密鑰錯誤";
-    render();
-  }
+  if (k === ADMIN_KEY) { S.adminOk = true; sessionStorage.setItem("edu_adm", "1"); S.msg = ""; render(); loadAdm(); }
+  else { S.msg = "密鑰錯誤"; render(); }
 }
 
 function addTeacher() {
   var nt = document.getElementById("newT").value.trim();
   if (!nt) return;
   callDb("teacher_applications", "POST", null, [{ teacher_name: nt, subject: "高中數學", status: "pending" }])
-    .then(function () {
-      return callDb("audit_logs", "POST", null, [{ action: "APPLY_TEACHER", target_info: nt }]);
-    })
-    .then(function () {
-      loadAdm();
-    });
+    .then(function () { return callDb("audit_logs", "POST", null, [{ action: "APPLY_TEACHER", target_info: nt }]); })
+    .then(function () { loadAdm(); });
 }
 
 function decideT(id, st) {
   callDb("teacher_applications", "PATCH", "id=eq." + id, { status: st })
-    .then(function () {
-      return callDb("audit_logs", "POST", null, [{ action: "TEACHER_" + st.toUpperCase(), target_info: "id=" + id }]);
-    })
-    .then(function () {
-      loadAdm();
-    });
+    .then(function () { return callDb("audit_logs", "POST", null, [{ action: "TEACHER_" + st.toUpperCase(), target_info: "id=" + id }]); })
+    .then(function () { loadAdm(); });
 }
 
 function loadAdm() {
@@ -202,8 +148,10 @@ function render() {
       return;
     }
 
+    var modeText = S.launchMode === "school" ? "學校課程模式" : "主題學習模式";
     h +=
       "<button type='button' class='btn btn-soft' onclick='S.studentView=\"home\";render()'>← 回到宇宙探索首頁</button>" +
+      "<span style='font-size:12px;color:#065f46;font-weight:700;margin-left:6px;'>目前入口：" + esc(modeText) + "（原型本機儲存）</span>" +
       "<label>學生姓名（用於區分本機學習紀錄）</label><input id='stuInp' value='" + esc(S.stu) + "' placeholder='例如：陳小華'>" +
       "<label>班級邀請碼</label><input id='codeInp' value='" + esc(S.code) + "'>" +
       "<div id='te-mount'></div>";
@@ -213,51 +161,29 @@ function render() {
     var si = document.getElementById("stuInp");
     if (si) {
       si.addEventListener("input", function (e) {
-        S.stu = e.target.value;
-        localStorage.setItem("edu_stu", S.stu);
-        if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") {
-          window.TeachingEngineModule.render(document.getElementById("te-mount"), S.preferredNode);
-        }
+        S.stu = e.target.value; localStorage.setItem("edu_stu", S.stu);
+        if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") window.TeachingEngineModule.render(document.getElementById("te-mount"), S.preferredNode);
       });
     }
     var ci = document.getElementById("codeInp");
-    if (ci) {
-      ci.addEventListener("input", function (e) {
-        S.code = e.target.value;
-        localStorage.setItem("edu_code", S.code);
-      });
-    }
-    if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") {
-      window.TeachingEngineModule.render(document.getElementById("te-mount"), S.preferredNode);
-    }
+    if (ci) ci.addEventListener("input", function (e) { S.code = e.target.value; localStorage.setItem("edu_code", S.code); });
+    if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") window.TeachingEngineModule.render(document.getElementById("te-mount"), S.preferredNode);
     return;
   }
 
   if (S.tab === "teacher") {
-    h +=
-      "<h3>教師班級（限已核准教師）</h3><label>已核准教師姓名</label><input id='tInp' value='" + esc(S.tName) + "' placeholder='輸入已核准教師姓名'>" +
-      "<button type='button' class='btn' onclick='checkTeacher()'>驗證並查看班級</button><div id='tOut' class='box'>請輸入已核准教師姓名並按驗證。</div>";
+    h += "<h3>教師班級（限已核准教師・原型測試門檻）</h3><label>已核准教師姓名</label><input id='tInp' value='" + esc(S.tName) + "' placeholder='輸入已核准教師姓名'><button type='button' class='btn' onclick='checkTeacher()'>驗證並查看班級</button><div id='tOut' class='box'>請輸入已核准教師姓名並按驗證。</div>";
   } else {
     if (!S.adminOk) {
-      h +=
-        "<h3>平台管理（僅限管理員）</h3><label>管理員密鑰</label><input id='admKey' type='password' placeholder='輸入管理員密鑰'>" +
-        "<button type='button' class='btn' onclick='unlockAdm()'>解鎖</button>" + (S.msg ? "<div class='box diag'>" + esc(S.msg) + "</div>" : "");
+      h += "<h3>平台管理（僅限管理員・原型測試門檻）</h3><label>管理員密鑰</label><input id='admKey' type='password' placeholder='輸入管理員密鑰'><button type='button' class='btn' onclick='unlockAdm()'>解鎖</button>" + (S.msg ? "<div class='box diag'>" + esc(S.msg) + "</div>" : "");
     } else {
-      h +=
-        "<div style='display:flex;justify-content:space-between;align-items:center'><strong>平台管理後台</strong><button type='button' class='btn btn-soft' onclick='S.adminOk=false;sessionStorage.removeItem(\"edu_adm\");render()'>鎖定</button></div>" +
-        "<label style='margin-top:8px'>新增教師資格申請</label><input id='newT' placeholder='輸入教師姓名'><button type='button' class='btn' onclick='addTeacher()'>送出申請</button>" +
-        "<div id='admList' class='box'>載入中...</div>";
+      h += "<div style='display:flex;justify-content:space-between;align-items:center'><strong>平台管理後台</strong><button type='button' class='btn btn-soft' onclick='S.adminOk=false;sessionStorage.removeItem(\"edu_adm\");render()'>鎖定</button></div><label style='margin-top:8px'>新增教師資格申請</label><input id='newT' placeholder='輸入教師姓名'><button type='button' class='btn' onclick='addTeacher()'>送出申請</button><div id='admList' class='box'>載入中...</div>";
     }
   }
 
   v.innerHTML = h;
   var ti = document.getElementById("tInp");
-  if (ti) {
-    ti.addEventListener("input", function (e) {
-      S.tName = e.target.value;
-      localStorage.setItem("edu_tname", S.tName);
-    });
-  }
+  if (ti) ti.addEventListener("input", function (e) { S.tName = e.target.value; localStorage.setItem("edu_tname", S.tName); });
   if (S.tab === "admin" && S.adminOk) loadAdm();
 }
 
