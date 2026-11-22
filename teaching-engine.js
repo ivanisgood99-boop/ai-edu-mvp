@@ -32,7 +32,6 @@
       .replace(/"/g, "&quot;");
   }
 
-  /* 課本式數學排版轉換器：內部保留純文字/算式，學生顯示端轉為課本排版 */
   function formatMathForStudent(rawText) {
     var s = esc(String(rawText || ""));
 
@@ -71,10 +70,8 @@
 
     s = s.replace(/_\{([^}]+)\}/g, "<sub class=\"math-expr\">$1</sub>");
     s = s.replace(/_([A-Za-z0-9])/g, "<sub class=\"math-expr\">$1</sub>");
-
     s = s.replace(/\^\{([^}]+)\}/g, "<sup class=\"math-expr\">$1</sup>");
     s = s.replace(/\^([+\-]?[A-Za-z0-9]+)/g, "<sup class=\"math-expr\">$1</sup>");
-
     s = s.replace(/\n/g, "<br>");
     return "<span class=\"math-expr\">" + s + "</span>";
   }
@@ -202,25 +199,38 @@
   };
 
   var QUESTION_BANK = [
-    { id: "QB-CH1-L1-1", chapterId: "CH-1", levelId: "CH1-L1", subConcept: "正整數次方連乘定義", difficulty: "基礎", type: "integer", standardAnswer: "17", acceptableAnswers: ["17"], steps: ["2^3 = 8", "(-3)^2 = 9", "8 + 9 = 17"], gradingRule: "數值需為 17", commonErrors: ["E02", "E04"], supplementNote: "正整數次方是連乘不是相乘；負數偶數次方為正。", active: true },
-    { id: "QB-CH1-L1-2", chapterId: "CH-1", levelId: "CH1-L1", subConcept: "負數奇偶次方正負號與括號", difficulty: "進階", type: "integer", standardAnswer: "-4", acceptableAnswers: ["-4"], steps: ["2^2 = 4", "(-2)^3 = -8", "4 + (-8) = -4"], gradingRule: "數值需為 -4", commonErrors: ["E02", "E04"], supplementNote: "(-2)^3 是三個 -2 連乘，結果為 -8。", active: true },
-    { id: "QB-CH1-L2-1", chapterId: "CH-1", levelId: "CH1-L2", subConcept: "零次方規定 a^0 = 1（a ≠ 0）", difficulty: "基礎", type: "integer", standardAnswer: "8", acceptableAnswers: ["8"], steps: ["(-6)^0 = 1", "2^3 = 8", "5^0 = 1", "1 + 8 - 1 = 8"], gradingRule: "數值需為 8", commonErrors: ["E01", "E04"], supplementNote: "非零數的零次方為 1，不是 0。", active: true },
-    { id: "QB-CH1-L2-2", chapterId: "CH-1", levelId: "CH1-L2", subConcept: "底數不可為 0 的限制", difficulty: "進階", type: "integer", standardAnswer: "4", acceptableAnswers: ["4"], steps: ["6^0 = 1", "3 + 1 = 4"], gradingRule: "數值需為 4", commonErrors: ["E06", "E04"], supplementNote: "先看清楚題目問的是「組數」還是「人數」。", active: true },
-    { id: "QB-CH2-L1-1", chapterId: "CH-2", levelId: "CH2-L1", subConcept: "平面兩點距離公式", difficulty: "基礎", type: "integer", standardAnswer: "5", acceptableAnswers: ["5"], steps: ["|2 - (-2)| = 4", "|4 - 1| = 3", "sqrt(4^2 + 3^2) = 5"], gradingRule: "數值需為 5", commonErrors: ["E04", "E01"], supplementNote: "先算水平差與鉛直差，平方和再開根號。", active: true },
-    { id: "QB-CH2-L1-2", chapterId: "CH-2", levelId: "CH2-L1", subConcept: "水平與鉛直坐標差", difficulty: "進階", type: "integer", standardAnswer: "13", acceptableAnswers: ["13"], steps: ["12^2 + 5^2 = 169", "sqrt(169) = 13"], gradingRule: "數值需為 13", commonErrors: ["E04", "E06"], supplementNote: "水平與鉛直位移垂直，可用畢氏定理求斜邊。", active: true },
-    { id: "QB-CH2-L2-1", chapterId: "CH-2", levelId: "CH2-L2", subConcept: "斜率定義與兩點公式", difficulty: "基礎", type: "integer", standardAnswer: "-2", acceptableAnswers: ["-2"], steps: ["分子：-3 - 5 = -8", "分母：6 - 2 = 4", "m = -8/4 = -2"], gradingRule: "數值需為 -2", commonErrors: ["E04", "E02"], supplementNote: "斜率是 y 變化量除以 x 變化量，分子與分母相減順序須一致。", active: true },
-    { id: "QB-CH2-L2-2", chapterId: "CH-2", levelId: "CH2-L2", subConcept: "鉛直線因分母為 0 故無斜率", difficulty: "進階", type: "integer", standardAnswer: "2", acceptableAnswers: ["2"], steps: ["分子：9 - 1 = 8", "分母：4 - 0 = 4", "m = 8/4 = 2"], gradingRule: "數值需為 2", commonErrors: ["E04", "E06"], supplementNote: "高度差除以水平差即為平均斜率。", active: true },
-    { id: "QB-CH2-L3-1", chapterId: "CH-2", levelId: "CH2-L3", subConcept: "點坐標代入檢驗", difficulty: "基礎", type: "integer", standardAnswer: "11", acceptableAnswers: ["11"], steps: ["代入 x = 4", "y = 2(4) + 3 = 11"], gradingRule: "數值需為 11", commonErrors: ["E04", "E01"], supplementNote: "將 x 值代入直線方程式計算對應 y 值。", active: true },
-    { id: "QB-CH2-L3-2", chapterId: "CH-2", levelId: "CH2-L3", subConcept: "點斜式與直線關係", difficulty: "進階", type: "integer", standardAnswer: "50", acceptableAnswers: ["50"], steps: ["20 + 15 × 2 = 50"], gradingRule: "數值需為 50", commonErrors: ["E06", "E04"], supplementNote: "基本費加上每小時費用乘以時數。", active: true },
-    { id: "QB-CH2-L4-1", chapterId: "CH-2", levelId: "CH2-L4", subConcept: "圓的標準式 (x - h)^2 + (y - k)^2 = r^2", difficulty: "基礎", type: "integer", standardAnswer: "25", acceptableAnswers: ["25"], steps: ["r = 5", "r^2 = 25"], gradingRule: "數值需為 25", commonErrors: ["E02", "E04"], supplementNote: "圓標準式右邊是 r^2，不是 r。", active: true },
-    { id: "QB-CH2-L4-2", chapterId: "CH-2", levelId: "CH2-L4", subConcept: "圓心與半徑幾何意義", difficulty: "進階", type: "integer", standardAnswer: "49", acceptableAnswers: ["49"], steps: ["r = 7", "r^2 = 49"], gradingRule: "數值需為 49", commonErrors: ["E04", "E06"], supplementNote: "半徑 7 對應標準式右邊常數為 7^2 = 49。", active: true },
-    { id: "QB-CH2-L5-1", chapterId: "CH-2", levelId: "CH2-L5", subConcept: "圓心到直線距離 d 與半徑 r 比較", difficulty: "基礎", type: "integer", standardAnswer: "4", acceptableAnswers: ["4"], steps: ["r = 10, d = 6", "r - d = 4"], gradingRule: "數值需為 4", commonErrors: ["E04", "E01"], supplementNote: "d < r 時直線與圓相交兩點。", active: true },
-    { id: "QB-CH2-L5-2", chapterId: "CH-2", levelId: "CH2-L5", subConcept: "相交、相切與不相交判準", difficulty: "進階", type: "integer", standardAnswer: "5", acceptableAnswers: ["5"], steps: ["9 - 4 = 5"], gradingRule: "數值需為 5", commonErrors: ["E04", "E06"], supplementNote: "比較警戒半徑與航線距離。", active: true },
-    { id: "QB-CH2-L6-1", chapterId: "CH-2", levelId: "CH2-L6", subConcept: "點與圓位置判讀", difficulty: "基礎", type: "integer", standardAnswer: "12", acceptableAnswers: ["12"], steps: ["25 - 13 = 12"], gradingRule: "數值需為 12", commonErrors: ["E04", "E01"], supplementNote: "先比較距離平方與半徑平方。", active: true },
-    { id: "QB-CH2-L6-2", chapterId: "CH-2", levelId: "CH2-L6", subConcept: "坐標與圓綜合解題", difficulty: "進階", type: "integer", standardAnswer: "8", acceptableAnswers: ["8"], steps: ["(0, 0) 到 (0, 8) 距離為 8"], gradingRule: "數值需為 8", commonErrors: ["E06", "E04"], supplementNote: "同一軸上兩點距離為坐標差的絕對值。", active: true },
-    { id: "QB-CH3-L1-1", chapterId: "CH-3", levelId: "CH3-L1", subConcept: "多項式代入求值", difficulty: "基礎", type: "integer", standardAnswer: "9", acceptableAnswers: ["9"], steps: ["f(2) = 2^2 + 2(2) + 1 = 4 + 4 + 1 = 9"], gradingRule: "數值需為 9", commonErrors: ["E04", "E01"], supplementNote: "將 x = 2 逐項代入計算。", active: true },
-    { id: "QB-CH3-L2-1", chapterId: "CH-3", levelId: "CH3-L2", subConcept: "餘式定理 f(a)", difficulty: "基礎", type: "integer", standardAnswer: "5", acceptableAnswers: ["5"], steps: ["f(1) = 1 + 4 = 5"], gradingRule: "數值需為 5", commonErrors: ["E04", "E02"], supplementNote: "除以 (x - 1) 的餘式為 f(1)。", active: true }
+    { id: "QB-CH1-L1-1", chapterId: "CH-1", levelId: "CH1-L1", subConcept: "正整數次方連乘定義", difficulty: "基礎", type: "integer", prompt: "【刷題練習 1/2】計算 2^3 + (-3)^2 的值。（填整數）", standardAnswer: "17", acceptableAnswers: ["17"], steps: ["2^3 = 8", "(-3)^2 = 9", "8 + 9 = 17"], gradingRule: "數值需為 17", commonErrors: ["E02", "E04"], supplementNote: "正整數次方是連乘不是相乘；負數偶數次方為正。", active: true },
+    { id: "QB-CH1-L1-2", chapterId: "CH-1", levelId: "CH1-L1", subConcept: "負數奇偶次方正負號與括號", difficulty: "進階", type: "integer", prompt: "【刷題練習 2/2】計算 2^2 + (-2)^3 的值。（填整數）", standardAnswer: "-4", acceptableAnswers: ["-4"], steps: ["2^2 = 4", "(-2)^3 = -8", "4 + (-8) = -4"], gradingRule: "數值需為 -4", commonErrors: ["E02", "E04"], supplementNote: "(-2)^3 是三個 -2 連乘，結果為 -8。", active: true },
+    { id: "QB-CH1-L2-1", chapterId: "CH-1", levelId: "CH1-L2", subConcept: "零次方規定 a^0 = 1（a ≠ 0）", difficulty: "基礎", type: "integer", prompt: "【刷題練習 1/2】計算 (-6)^0 + 2^3 - 5^0 的值。（填整數）", standardAnswer: "8", acceptableAnswers: ["8"], steps: ["(-6)^0 = 1", "2^3 = 8", "5^0 = 1", "1 + 8 - 1 = 8"], gradingRule: "數值需為 8", commonErrors: ["E01", "E04"], supplementNote: "非零數的零次方為 1，不是 0。", active: true },
+    { id: "QB-CH1-L2-2", chapterId: "CH-1", levelId: "CH1-L2", subConcept: "底數不可為 0 的限制", difficulty: "進階", type: "integer", prompt: "【刷題練習 2/2】原有 3 組，加上 6^0 組，共有幾組？（填整數）", standardAnswer: "4", acceptableAnswers: ["4"], steps: ["6^0 = 1", "3 + 1 = 4"], gradingRule: "數值需為 4", commonErrors: ["E06", "E04"], supplementNote: "先看清楚題目問的是「組數」還是「人數」。", active: true },
+    { id: "QB-CH2-L1-1", chapterId: "CH-2", levelId: "CH2-L1", subConcept: "平面兩點距離公式", difficulty: "基礎", type: "integer", prompt: "【刷題練習 1/2】求點 (-2, 1) 與點 (2, 4) 之間的距離。（填整數）", standardAnswer: "5", acceptableAnswers: ["5"], steps: ["|2 - (-2)| = 4", "|4 - 1| = 3", "sqrt(4^2 + 3^2) = 5"], gradingRule: "數值需為 5", commonErrors: ["E04", "E01"], supplementNote: "先算水平差與鉛直差，平方和再開根號。", active: true },
+    { id: "QB-CH2-L1-2", chapterId: "CH-2", levelId: "CH2-L1", subConcept: "水平與鉛直坐標差", difficulty: "進階", type: "integer", prompt: "【刷題練習 2/2】兩點水平距離 12、鉛直距離 5，連線段長為多少？（填整數）", standardAnswer: "13", acceptableAnswers: ["13"], steps: ["12^2 + 5^2 = 169", "sqrt(169) = 13"], gradingRule: "數值需為 13", commonErrors: ["E04", "E06"], supplementNote: "水平與鉛直位移垂直，可用畢氏定理求斜邊。", active: true },
+    { id: "QB-CH2-L2-1", chapterId: "CH-2", levelId: "CH2-L2", subConcept: "斜率定義與兩點公式", difficulty: "基礎", type: "integer", prompt: "【刷題練習 1/2】求通過點 (2, 5) 與點 (6, -3) 的直線斜率。（填整數）", standardAnswer: "-2", acceptableAnswers: ["-2"], steps: ["分子：-3 - 5 = -8", "分母：6 - 2 = 4", "m = -8/4 = -2"], gradingRule: "數值需為 -2", commonErrors: ["E04", "E02"], supplementNote: "斜率是 y 變化量除以 x 變化量，分子與分母相減順序須一致。", active: true },
+    { id: "QB-CH2-L2-2", chapterId: "CH-2", levelId: "CH2-L2", subConcept: "鉛直線因分母為 0 故無斜率", difficulty: "進階", type: "integer", prompt: "【刷題練習 2/2】通過 (0, 1) 與 (4, 9) 的直線斜率為多少？（填整數）", standardAnswer: "2", acceptableAnswers: ["2"], steps: ["分子：9 - 1 = 8", "分母：4 - 0 = 4", "m = 8/4 = 2"], gradingRule: "數值需為 2", commonErrors: ["E04", "E06"], supplementNote: "高度差除以水平差即為平均斜率。", active: true },
+    { id: "QB-CH2-L3-1", chapterId: "CH-2", levelId: "CH2-L3", subConcept: "點坐標代入檢驗", difficulty: "基礎", type: "integer", prompt: "【刷題練習 1/2】直線 y = 2x + 3 上，當 x = 4 時對應的 y 值為多少？（填整數）", standardAnswer: "11", acceptableAnswers: ["11"], steps: ["代入 x = 4", "y = 2(4) + 3 = 11"], gradingRule: "數值需為 11", commonErrors: ["E04", "E01"], supplementNote: "將 x 值代入直線方程式計算對應 y 值。", active: true },
+    { id: "QB-CH2-L3-2", chapterId: "CH-2", levelId: "CH2-L3", subConcept: "點斜式與直線關係", difficulty: "進階", type: "integer", prompt: "【刷題練習 2/2】費用公式 y = 15x + 20，當 x = 2 時 y 為多少？（填整數）", standardAnswer: "50", acceptableAnswers: ["50"], steps: ["20 + 15 × 2 = 50"], gradingRule: "數值需為 50", commonErrors: ["E06", "E04"], supplementNote: "基本費加上每小時費用乘以時數。", active: true },
+    { id: "QB-CH2-L4-1", chapterId: "CH-2", levelId: "CH2-L4", subConcept: "圓的標準式 (x - h)^2 + (y - k)^2 = r^2", difficulty: "基礎", type: "integer", prompt: "【刷題練習 1/2】半徑 r = 5 的圓，其標準式右邊常數 r^2 為多少？（填整數）", standardAnswer: "25", acceptableAnswers: ["25"], steps: ["r = 5", "r^2 = 25"], gradingRule: "數值需為 25", commonErrors: ["E02", "E04"], supplementNote: "圓標準式右邊是 r^2，不是 r。", active: true },
+    { id: "QB-CH2-L4-2", chapterId: "CH-2", levelId: "CH2-L4", subConcept: "圓心與半徑幾何意義", difficulty: "進階", type: "integer", prompt: "【刷題練習 2/2】半徑 r = 7 的圓，其標準式右邊 r^2 為多少？（填整數）", standardAnswer: "49", acceptableAnswers: ["49"], steps: ["r = 7", "r^2 = 49"], gradingRule: "數值需為 49", commonErrors: ["E04", "E06"], supplementNote: "半徑 7 對應標準式右邊常數為 7^2 = 49。", active: true },
+    { id: "QB-CH2-L5-1", chapterId: "CH-2", levelId: "CH2-L5", subConcept: "圓心到直線距離 d 與半徑 r 比較", difficulty: "基礎", type: "integer", prompt: "【刷題練習 1/2】已知圓半徑 r = 10，圓心到直線距離 d = 6，求 r - d。（填整數）", standardAnswer: "4", acceptableAnswers: ["4"], steps: ["r = 10, d = 6", "r - d = 4"], gradingRule: "數值需為 4", commonErrors: ["E04", "E01"], supplementNote: "d < r 時直線與圓相交兩點。", active: true },
+    { id: "QB-CH2-L5-2", chapterId: "CH-2", levelId: "CH2-L5", subConcept: "相交、相切與不相交判準", difficulty: "進階", type: "integer", prompt: "【刷題練習 2/2】已知 r = 9、d = 4，求 r - d。（填整數）", standardAnswer: "5", acceptableAnswers: ["5"], steps: ["9 - 4 = 5"], gradingRule: "數值需為 5", commonErrors: ["E04", "E06"], supplementNote: "比較半徑與圓心到直線距離。", active: true },
+    { id: "QB-CH2-L6-1", chapterId: "CH-2", levelId: "CH2-L6", subConcept: "點與圓位置判讀", difficulty: "基礎", type: "integer", prompt: "【刷題練習 1/2】點到圓心距離平方為 13，半徑平方為 25，求 25 - 13。（填整數）", standardAnswer: "12", acceptableAnswers: ["12"], steps: ["25 - 13 = 12"], gradingRule: "數值需為 12", commonErrors: ["E04", "E01"], supplementNote: "先比較距離平方與半徑平方。", active: true },
+    { id: "QB-CH2-L6-2", chapterId: "CH-2", levelId: "CH2-L6", subConcept: "坐標與圓綜合解題", difficulty: "進階", type: "integer", prompt: "【刷題練習 2/2】點 (0, 0) 到點 (0, 8) 的距離為多少？（填整數）", standardAnswer: "8", acceptableAnswers: ["8"], steps: ["(0, 0) 到 (0, 8) 距離為 8"], gradingRule: "數值需為 8", commonErrors: ["E06", "E04"], supplementNote: "同一軸上兩點距離為坐標差的絕對值。", active: true },
+    { id: "QB-CH3-L1-1", chapterId: "CH-3", levelId: "CH3-L1", subConcept: "多項式代入求值", difficulty: "基礎", type: "integer", prompt: "【刷題練習 1/2】設 f(x) = x^2 + 2x + 1，求 f(2) 的值。（填整數）", standardAnswer: "9", acceptableAnswers: ["9"], steps: ["f(2) = 2^2 + 2(2) + 1 = 4 + 4 + 1 = 9"], gradingRule: "數值需為 9", commonErrors: ["E04", "E01"], supplementNote: "將 x = 2 逐項代入計算。", active: true },
+    { id: "QB-CH3-L1-2", chapterId: "CH-3", levelId: "CH3-L1", subConcept: "多項式項次與係數", difficulty: "進階", type: "integer", prompt: "【刷題練習 2/2】設 f(x) = 3x + 4，求 f(2) 的值。（填整數）", standardAnswer: "10", acceptableAnswers: ["10"], steps: ["3(2) + 4 = 10"], gradingRule: "數值需為 10", commonErrors: ["E04", "E02"], supplementNote: "先乘以 x 的係數再加上常數項。", active: true },
+    { id: "QB-CH3-L2-1", chapterId: "CH-3", levelId: "CH3-L2", subConcept: "餘式定理 f(a)", difficulty: "基礎", type: "integer", prompt: "【刷題練習 1/2】f(x) = x + 4 除以 (x - 1) 的餘數是多少？（填整數）", standardAnswer: "5", acceptableAnswers: ["5"], steps: ["f(1) = 1 + 4 = 5"], gradingRule: "數值需為 5", commonErrors: ["E04", "E02"], supplementNote: "除以 (x - 1) 的餘式為 f(1)。", active: true },
+    { id: "QB-CH3-L2-2", chapterId: "CH-3", levelId: "CH3-L2", subConcept: "因式定理判別", difficulty: "進階", type: "integer", prompt: "【刷題練習 2/2】f(x) = 2x + 6 除以 (x - 1) 的餘數是多少？（填整數）", standardAnswer: "8", acceptableAnswers: ["8"], steps: ["f(1) = 2(1) + 6 = 8"], gradingRule: "數值需為 8", commonErrors: ["E04", "E02"], supplementNote: "代入 x = 1 計算 f(1)。", active: true }
   ];
+
+  var FALLBACK_PRACTICE_Q = {
+    id: "QB-FALLBACK-1",
+    subConcept: "基礎運算與觀念檢驗",
+    difficulty: "基礎",
+    prompt: "【刷題練習】計算 3^2 + 4^2 的值。（填整數）",
+    standardAnswer: "25",
+    acceptableAnswers: ["25"],
+    commonErrors: ["E04"],
+    supplementNote: "3^2 = 9，4^2 = 16，9 + 16 = 25。"
+  };
 
   var REMEDIAL_BANK = {
     E01: [
@@ -725,7 +735,9 @@
   }
 
   function getLevelQuestions(levelId) {
-    return QUESTION_BANK.filter(function (q) { return q.active && q.levelId === levelId; });
+    var list = QUESTION_BANK.filter(function (q) { return q.active && q.levelId === levelId; });
+    if (list && list.length > 0) return list;
+    return [FALLBACK_PRACTICE_Q];
   }
 
   function getChapterCompletion(sid, chapterId) {
@@ -866,8 +878,8 @@
 
     if (s.subStep === 4) {
       var qBank = getLevelQuestions(lv.levelId);
-      var pIdx = (s.practiceIndex || 0) % Math.max(1, qBank.length);
-      var pq = qBank[pIdx];
+      var pIdx = Math.abs(Number(s.practiceIndex || 0)) % Math.max(1, qBank.length);
+      var pq = qBank[pIdx] || FALLBACK_PRACTICE_Q;
       return (
         "<h4 class=\"te-card-title\">Stage " + lv.levelNumber + "-2 刷題練習・4. 互動練習（題庫第 " + (pIdx + 1) + "/" + qBank.length + " 題）</h4>" +
         "<div class=\"te-sub-box\"><strong>子觀念：</strong>" + esc(pq.subConcept) + "｜<strong>難度：</strong>" + esc(pq.difficulty) + "</div>" +
@@ -887,7 +899,7 @@
         if (!s.logs[i].isCorrect && s.logs[i].errorCode) { lastErr = s.logs[i].errorCode; break; }
       }
       var remList = REMEDIAL_BANK[lastErr] || REMEDIAL_BANK.E04;
-      var rIdx = (s.remedialIndex || 0) % remList.length;
+      var rIdx = Math.abs(Number(s.remedialIndex || 0)) % remList.length;
       var rq = remList[rIdx];
       return (
         "<h4 class=\"te-card-title\">Stage " + lv.levelNumber + "-2 刷題練習・5. 個人化加強（針對錯誤類型：" + esc(ERR[lastErr] || lastErr) + "）</h4>" +
@@ -974,8 +986,8 @@
 
     if (s.stageCode === "X-2" && s.subStep === 4) {
       var qBank = getLevelQuestions(lv.levelId);
-      var pIdx = (s.practiceIndex || 0) % Math.max(1, qBank.length);
-      var pq = qBank[pIdx];
+      var pIdx = Math.abs(Number(s.practiceIndex || 0)) % Math.max(1, qBank.length);
+      var pq = qBank[pIdx] || FALLBACK_PRACTICE_Q;
       var norm = String(ans || "").trim().replace(/^\+/, "");
       var okP = pq.acceptableAnswers.indexOf(norm) !== -1 || norm === pq.standardAnswer;
       var errP = okP ? null : (pq.commonErrors[0] || "E04");
@@ -1017,7 +1029,7 @@
         if (!s.logs[i].isCorrect && s.logs[i].errorCode) { lastErr = s.logs[i].errorCode; break; }
       }
       var remList = REMEDIAL_BANK[lastErr] || REMEDIAL_BANK.E04;
-      var rIdx = (s.remedialIndex || 0) % remList.length;
+      var rIdx = Math.abs(Number(s.remedialIndex || 0)) % remList.length;
       var rq = remList[rIdx];
       var normR = String(ans || "").trim().replace(/^\+/, "");
       var okR = normR === rq.answer;
@@ -1066,7 +1078,6 @@
     var ch = CHAPTERS[lv.chapterId] || CHAPTERS["CH-1"];
     var s = Repo.getSession(sid, lv.levelId);
 
-    // 強制防越級解鎖：若目前 stageCode 尚未解鎖，自動退回合法 Stage
     var curStageAccess = getStrictStageAccess(sid, lv.levelId, s.stageCode);
     if (!curStageAccess.allowed) {
       s.stageCode = "X-1";
@@ -1076,6 +1087,7 @@
     }
     if (s.stageCode === "X-2") {
       s.stage2Unlocked = getStrictStageAccess(sid, lv.levelId, "X-2").allowed;
+      if (!s.subStep || s.subStep < 4) s.subStep = 4;
     }
 
     var starEv = Repo.saveAndSyncMastery(s);
@@ -1151,7 +1163,7 @@
         return;
       }
       cur.stageCode = "X-2";
-      if (cur.subStep < 4) cur.subStep = 4;
+      if (!cur.subStep || cur.subStep < 4) cur.subStep = 4;
       Repo.saveAndSyncMastery(cur);
       renderEngine(container, lv.levelId);
     });
@@ -1187,7 +1199,7 @@
     if (nextQ) nextQ.addEventListener("click", function () {
       var cur = Repo.getSession(getSid(), lv.levelId);
       var bank = getLevelQuestions(lv.levelId);
-      cur.practiceIndex = ((cur.practiceIndex || 0) + 1) % Math.max(1, bank.length);
+      cur.practiceIndex = (Math.abs(Number(cur.practiceIndex || 0)) + 1) % Math.max(1, bank.length);
       Repo.saveAndSyncMastery(cur);
       renderEngine(container, lv.levelId);
     });
