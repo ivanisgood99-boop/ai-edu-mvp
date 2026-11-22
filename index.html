@@ -39,7 +39,13 @@
   <div id="view" class="card">正在啟動平台...</div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  window.SUPABASE_URL = "https://antfbdsqrznnssdvpzcn.supabase.co";
+  window.SUPABASE_ANON_KEY = "sb_publishable_z7l4i49w93dZ0yrR5SPbVw_ShVGKm0J";
+</script>
 <script src="./teaching-engine.js"></script>
+<script src="./auth-system.js"></script>
 <script src="./student-home.js"></script>
 <script>
 var SB_URL = "https://antfbdsqrznnssdvpzcn.supabase.co";
@@ -160,6 +166,7 @@ function render() {
   syncPracticeTheme();
   var v = document.getElementById("view");
   if (!v) return;
+  v.setAttribute("data-student-home", "1");
   var h = "";
 
   if (S.tab === "student") {
