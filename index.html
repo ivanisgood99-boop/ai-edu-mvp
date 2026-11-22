@@ -1,44 +1,3 @@
-<!doctype html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI 個人化教育平台 - 星航學習</title>
-  <link rel="stylesheet" href="./student-home.css" />
-  <link rel="stylesheet" href="./teaching-engine.css" />
-  <style>
-    *{box-sizing:border-box}
-    body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;background:#f7f9f5;color:#1e293b;line-height:1.55}
-    .wrap{max-width:920px;margin:0 auto}
-    .card{background:#fff;border:1px solid #d1fae5;border-radius:14px;padding:16px;margin-bottom:12px}
-    .btn{border:0;border-radius:8px;padding:8px 13px;background:#047857;color:#fff;font-weight:700;cursor:pointer;margin-right:6px;margin-top:6px;font-size:13px}
-    .btn-soft{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
-    .btn-warn{background:#fffbeb;color:#78350f;border:1px solid #fde68a}
-    input,textarea{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 10px;font-size:14px;font-family:inherit}
-    .box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px;margin:10px 0;font-size:13px;white-space:pre-line}
-    .diag{background:#fff1f2;border-color:#fecdd3;color:#881337}
-    #err{display:none;padding:10px;background:#fff1f2;border:1px solid #e11d48;color:#881337;border-radius:10px;font-size:12px;margin-bottom:12px;white-space:pre-wrap}
-  </style>
-  <script>
-    window.onerror = function (m, u, l) {
-      var e = document.getElementById("err");
-      if (e) { e.style.display = "block"; e.textContent = "JS錯誤: " + m + " (第" + l + "行)" + (u ? " [" + u + "]" : ""); }
-    };
-  </script>
-</head>
-<body>
-<div class="wrap">
-  <div id="err"></div>
-  <div class="card">
-    <strong style="color:#064e3b">AI 個人化教育平台</strong>
-    <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#78350f;font-weight:700">108課綱・星航學習</span><br>
-    <button type="button" class="btn" onclick="goTab('student')">學生學習</button>
-    <button type="button" class="btn btn-soft" onclick="goTab('teacher')">教師班級</button>
-    <button type="button" class="btn btn-soft" onclick="goTab('admin')">平台管理</button>
-  </div>
-  <div id="view" class="card">正在啟動平台...</div>
-</div>
-
 <script src="./teaching-engine.js"></script>
 <script src="./student-home.js"></script>
 <script>
@@ -86,6 +45,16 @@ window.__openTeachingEngineForNode = function (nodeOrLevelId, mode) {
   S.msg = "";
   render();
 };
+
+function renderFallbackHome(target) {
+  target.innerHTML =
+    "<div style='background:#0b1228;color:#f8fafc;padding:18px;border-radius:12px;border:1px solid rgba(148,163,184,0.3)'>" +
+    "<h3 style='margin:0 0 8px;color:#38bdf8'>宇宙探索地圖（備援模式）</h3>" +
+    "<p style='margin:0 0 12px;color:#cbd5e1;font-size:13px'>偵測到外部模組尚未完整載入，已啟動保底入口，可直接進入關卡：</p>" +
+    "<button type='button' class='btn' onclick='window.__openTeachingEngineForNode(\"CH2-L1\",\"X-1\")'>進入 CH2-L1（Stage 1-1）</button>" +
+    "<button type='button' class='btn btn-soft' onclick='window.__openTeachingEngineForNode(\"CH2-L2\",\"X-1\")'>進入 CH2-L2（Stage 2-1）</button>" +
+    "</div>";
+}
 
 function checkTeacher() {
   var out = document.getElementById("tOut");
@@ -153,8 +122,12 @@ function render() {
   var h = "";
 
   if (S.tab === "student") {
-    if (S.studentView === "home" && window.StudentHomeModule && typeof window.StudentHomeModule.render === "function") {
-      window.StudentHomeModule.render(v);
+    if (S.studentView === "home") {
+      if (window.StudentHomeModule && typeof window.StudentHomeModule.render === "function") {
+        window.StudentHomeModule.render(v);
+      } else {
+        renderFallbackHome(v);
+      }
       return;
     }
 
@@ -209,5 +182,3 @@ function render() {
 
 render();
 </script>
-</body>
-</html>
