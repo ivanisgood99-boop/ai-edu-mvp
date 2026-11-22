@@ -1,4 +1,3 @@
-/* 沿用既有太空深色主題變數與版面，並新增課本式數學排版與九段式講義樣式 */
 :root {
   --te-bg-space: #070B1A;
   --te-bg-shell: #0B1228;
@@ -93,17 +92,6 @@ body.te-practice-active #view.card {
 .te-topic-btn:hover { color: var(--te-text-primary); border-color: var(--te-accent-bright); }
 .te-topic-btn.active { background-color: var(--te-accent-primary); border-color: var(--te-accent-bright); color: var(--te-text-primary); }
 
-.te-stage-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
-.te-stage-step {
-  min-height: 44px; padding: 8px 10px; border-radius: 10px;
-  background-color: var(--te-bg-sub); border: 1px solid var(--te-border-subtle);
-  color: var(--te-text-secondary); font-size: 13px; font-weight: 600; line-height: 1.35;
-  display: flex; align-items: center; justify-content: center; text-align: center; word-break: break-word;
-}
-.te-stage-step.done { background-color: var(--te-ok-bg); border-color: var(--te-ok-border); color: var(--te-ok-text); }
-.te-stage-step.active { background-color: var(--te-accent-primary); border-color: var(--te-accent-bright); color: var(--te-text-primary); font-weight: 700; }
-.te-stage-step.locked { background-color: rgba(27, 41, 69, 0.72); border-style: dashed; border-color: rgba(148, 163, 184, 0.35); color: var(--te-text-muted); }
-
 .te-card {
   background-color: var(--te-bg-card); border: 1px solid var(--te-border-subtle);
   border-radius: 12px; padding: 16px; color: var(--te-text-primary);
@@ -118,20 +106,6 @@ body.te-practice-active #view.card {
 }
 .te-sub-box strong { color: var(--te-text-primary); }
 
-/* 九段式課本教材卡片 */
-.lesson-sections { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
-.lesson-block {
-  background-color: var(--te-bg-sub); border: 1px solid var(--te-border-subtle);
-  border-radius: 10px; padding: 12px 14px;
-}
-.lesson-block-hd {
-  font-size: 14px; font-weight: 800; color: var(--te-accent-bright);
-  margin-bottom: 6px; letter-spacing: 0.01em;
-}
-.lesson-block-bd {
-  font-size: 14px; line-height: 1.75; color: var(--te-text-primary);
-  word-break: break-word;
-}
 .lesson-diagram-wrap {
   margin-top: 8px; padding: 10px; border-radius: 8px;
   background-color: var(--te-bg-shell); border: 1px solid rgba(56, 189, 248, 0.25);
@@ -192,17 +166,11 @@ body.te-practice-active #view.card {
 .te-feedback.ok { background-color: var(--te-ok-bg); border: 1px solid var(--te-ok-border); color: var(--te-ok-text); }
 .te-feedback.guide { background-color: var(--te-err-bg); border: 1px solid var(--te-err-border); color: var(--te-err-text); }
 
-.te-dim-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 12px 0; }
-.te-dim-item { background-color: var(--te-bg-sub); border: 1px solid var(--te-border-subtle); border-radius: 10px; padding: 12px; }
-.te-dim-name { font-size: 13px; font-weight: 700; color: var(--te-text-secondary); }
-.te-dim-val { font-size: 16px; font-weight: 800; color: var(--te-text-primary); margin-top: 4px; }
-
 .te-log-list { margin: 8px 0 0; padding-left: 18px; color: var(--te-text-secondary); font-size: 13px; line-height: 1.65; }
 .te-log-list li { margin-bottom: 4px; word-break: break-word; }
 
 @media (max-width: 768px) {
   .te-practice-fields { grid-template-columns: 1fr; }
-  .te-stage-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .te-root, .te-card { padding: 12px; }
   .te-btn, .te-topic-btn { width: 100%; justify-content: center; }
 }
