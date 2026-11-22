@@ -1,15 +1,13 @@
-/* 第二階段：學生端教學引擎 - 第二輪修正（完整版，規則式教學・實驗參數模式） */
+/* 第二階段：學生端教學引擎（獨立模組，規則式教學・實驗參數模式） */
 (function () {
   "use strict";
 
-  // 0. 可調整實驗參數（非教育研究驗證定論，僅供系統實驗調整）
   var EXPERIMENTAL_PARAMS = {
-    minDistinctQuestionsPerDimension: 2, // 各維度需至少 2 題「不同題目識別碼」的有效作答，否則顯示「尚需更多練習」
-    masteryMinFirstTryRatio: 0.75,       // 「精熟」首次作答正確率實驗門檻
-    progressMinRatio: 0.40               // 「穩定進步」作答正確率實驗門檻
+    minDistinctQuestionsPerDimension: 2,
+    masteryMinFirstTryRatio: 0.75,
+    progressMinRatio: 0.40
   };
 
-  // 1. 內部錯誤分類（僅供系統內部記錄與診斷，不直接顯示代碼給學生）
   var ERROR_TAXONOMY = {
     E01: "定義理解錯誤",
     E02: "性質使用錯誤",
@@ -20,7 +18,6 @@
     E07: "抄寫或計算疏失"
   };
 
-  // 2. 依具體錯誤成因提供不同引導（錯誤分類與學生回饋分離）
   function resolveSpecificRemediation(errorCode, rawAnswer, nodeId, customContext) {
     var ans = String(rawAnswer || "").trim();
 
@@ -34,7 +31,7 @@
     if (customContext === "zero_power_includes_zero") {
       return {
         encouragement: "前半句提到非零數的零次方為 1 很有概念，但「包括 0」這部分需要修正。",
-        coaching: "零指數成立的前提是「底數不能為 0」；0 的 0 次方在國中／高中數學中不列入 a^0 = 1 的一般規定。"
+        coaching: "零指數成立的前提是「底數不能為 0」；0 的 0 次方不列入 a^0 = 1 的一般規定。"
       };
     }
 
@@ -98,11 +95,8 @@
     };
   }
 
-  // 3. 文字解釋判斷器（檢查概念完整度與矛盾陳述，區分 pass / partial / incorrect / unclear，並預留未來 AI 語意分析介面）
   var SemanticAnalyzerHook = {
-    // 未來可掛載外部 AI 語意分析函式：(payload) => ({ verdict: "pass"|"partial"|"incorrect"|"unclear", errorCode: ..., supplementPrompt: ..., contextKey: ... })
     customAnalyzer: null,
-
     analyzeExplanation: function (payload) {
       if (typeof this.customAnalyzer === "function") {
         return this.customAnalyzer(payload);
@@ -111,19 +105,16 @@
       var raw = String((payload && payload.answer) || "").trim();
       var lower = raw.toLowerCase();
 
-      // 空字串或單一字／純數字：無法可靠判斷，要求補充說明
       if (!raw || raw.length <= 1 || /^[\+\-]?\d+$/.test(raw)) {
         return {
           verdict: "unclear",
           errorCode: "E05",
           contextKey: null,
-          supplementPrompt:
-            "只寫單一字詞或數字還看不出你的想法，請用完整的句子補充說明你的理由。"
+          supplementPrompt: "只寫單一字詞或數字還看不出你的想法，請用完整的句子補充說明你的理由。"
         };
       }
 
       if (payload.nodeId === "M1-01") {
-        // 檢查互相矛盾或錯誤的奇偶次方正負號陳述
         var hasOddPos =
           (lower.indexOf("奇") !== -1 && lower.indexOf("正") !== -1 && lower.indexOf("奇數次方是負") === -1 && lower.indexOf("奇數次方為負") === -1) ||
           (lower.indexOf("(-2)^3") !== -1 && lower.indexOf("正") !== -1 && lower.indexOf("負") === -1);
@@ -158,8 +149,7 @@
             verdict: "partial",
             errorCode: "E05",
             contextKey: null,
-            supplementPrompt:
-              "你已經提到一部分重點了！請再補充說明「奇數次方與偶數次方」各自對應的正負號或括號影響。"
+            supplementPrompt: "你已經提到一部分重點了！請再補充說明「奇數次方與偶數次方」各自對應的正負號或括號影響。"
           };
         }
 
@@ -167,12 +157,10 @@
           verdict: "unclear",
           errorCode: "E01",
           contextKey: null,
-          supplementPrompt:
-            "目前的說明還看不出與負數次方正負號規律的關聯，請補充說明奇數次方與偶數次方分別會得到正數或負數。"
+          supplementPrompt: "目前的說明還看不出與負數次方正負號規律的關聯，請補充說明奇數次方與偶數次方分別會得到正數或負數。"
         };
       }
 
-      // M1-02 零指數除法規律與底數限制說明
       var includesZero =
         lower.indexOf("包括 0") !== -1 ||
         lower.indexOf("包括0") !== -1 ||
@@ -214,8 +202,7 @@
           verdict: "partial",
           errorCode: "E05",
           contextKey: null,
-          supplementPrompt:
-            "你已經提到一部分概念了！請再補充說明「相同非零數相除為 1」或「指數相減得到零次方」的關聯。"
+          supplementPrompt: "你已經提到一部分概念了！請再補充說明「相同非零數相除為 1」或「指數相減得到零次方」的關聯。"
         };
       }
 
@@ -223,13 +210,11 @@
         verdict: "unclear",
         errorCode: "E01",
         contextKey: null,
-        supplementPrompt:
-          "這段說明還沒有清楚連結到除法規律或非零底數的條件，請用自己的話再補充說明。"
+        supplementPrompt: "這段說明還沒有清楚連結到除法規律或非零底數的條件，請用自己的話再補充說明。"
       };
     }
   };
 
-  // 4. 既有 M1-01、M1-02 教材（完整保留原始教材）與人工驗算後之六階段／補救題設定
   var KNOWLEDGE_NODES = {
     "M1-01": {
       id: "M1-01",
@@ -243,25 +228,16 @@
       stage2Guide: {
         questionId: "M1-01-S2-GUIDE",
         dimension: "推理能力",
-        prompt:
-          "想一想：當底數是負數時，次方次數是奇數或偶數，結果的正負號有什麼不同？請用自己的話說明為什麼 (-2)^3 與 (-2)^4 的正負號不同。",
+        prompt: "想一想：當底數是負數時，次方次數是奇數或偶數，結果的正負號有什麼不同？請用自己的話說明為什麼 (-2)^3 與 (-2)^4 的正負號不同。",
         expectedAnswerDesc: "正確說明奇數次方為負、偶數次方為正（且無矛盾陳述）",
         validate: function (raw, nodeId) {
-          return SemanticAnalyzerHook.analyzeExplanation({
-            nodeId: nodeId,
-            stage: 2,
-            answer: raw
-          });
+          return SemanticAnalyzerHook.analyzeExplanation({ nodeId: nodeId, stage: 2, answer: raw });
         }
       },
       stage3Check: {
         questionId: "M1-01-S3-CHECK",
         dimension: "概念理解",
-        prompt:
-          "【理解檢查】下列哪一個算式的值與 -5^2 相等？（請輸入 A、B 或 C）\n" +
-          "A. (-5)^2\n" +
-          "B. -(5 × 5)\n" +
-          "C. (-5) × 2",
+        prompt: "【理解檢查】下列哪一個算式的值與 -5^2 相等？（請輸入 A、B 或 C）\nA. (-5)^2\nB. -(5 × 5)\nC. (-5) × 2",
         expectedAnswer: "B",
         validate: function (raw) {
           var u = String(raw || "").trim().toUpperCase();
@@ -280,29 +256,23 @@
         validate: function (raw) {
           var t = String(raw || "").trim();
           if (!t) return { verdict: "unclear", ok: false, errorCode: "E06", supplementPrompt: "請先輸入計算結果。" };
-          if (!/^[\+\-]?\d+$/.test(t)) {
-            return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入整數數值結果。" };
-          }
+          if (!/^[\+\-]?\d+$/.test(t)) return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入整數數值結果。" };
           if (t === "17") return { verdict: "pass", ok: true, errorCode: null };
           if (t === "-1" || t === "1" || t === "-17") return { verdict: "incorrect", ok: false, errorCode: "E02", contextKey: "contradiction_sign" };
           if (t === "15" || t === "12") return { verdict: "incorrect", ok: false, errorCode: "E07", contextKey: null };
           return { verdict: "incorrect", ok: false, errorCode: "E04", contextKey: null };
         }
       },
-      // 人工驗算：邊長 2 公尺的正方形面積為 2^2 = 4（平方公尺）；(-2)^3 = (-2)×(-2)×(-2) = -8；4 + (-8) = -4
       stage5Remedial: {
         questionId: "M1-01-S5-REMEDIAL",
         dimension: "應用能力",
         contextNote: "情境轉換：正方形地墊面積（2^2 = 4）與負數三次方數值（(-2)^3 = -8）合併計算",
-        prompt:
-          "【個人化補救題】一塊邊長為 2 公尺的正方形地墊，面積為 2^2 = 4 平方公尺；另有一個負數三次方算式 (-2)^3（表示 (-2) 連乘 3 次）。請問「正方形面積（4）」加上「(-2)^3 的值」是多少？（請輸入整數，例如 -4）",
+        prompt: "【個人化補救題】一塊邊長為 2 公尺的正方形地墊，面積為 2^2 = 4 平方公尺；另有一個負數三次方算式 (-2)^3（表示 (-2) 連乘 3 次）。請問「正方形面積（4）」加上「(-2)^3 的值」是多少？（請輸入整數，例如 -4）",
         expectedAnswer: "-4",
         validate: function (raw) {
           var t = String(raw || "").trim();
           if (!t) return { verdict: "unclear", ok: false, errorCode: "E06", supplementPrompt: "請輸入計算結果。" };
-          if (!/^[\+\-]?\d+$/.test(t)) {
-            return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入整數數值結果。" };
-          }
+          if (!/^[\+\-]?\d+$/.test(t)) return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入整數數值結果。" };
           if (t === "-4") return { verdict: "pass", ok: true, errorCode: null };
           if (t === "12" || t === "4") return { verdict: "incorrect", ok: false, errorCode: "E02", contextKey: "contradiction_sign" };
           return { verdict: "incorrect", ok: false, errorCode: "E04", contextKey: null };
@@ -328,25 +298,16 @@
       stage2Guide: {
         questionId: "M1-02-S2-GUIDE",
         dimension: "推理能力",
-        prompt:
-          "想一想：如果同底數相除時指數相減，例如 5^2 ÷ 5^2 會得到 5^0；從除法規律來看，為什麼非零數的 0 次方會規定為 1，而不是 0？請用自己的話說明。",
+        prompt: "想一想：如果同底數相除時指數相減，例如 5^2 ÷ 5^2 會得到 5^0；從除法規律來看，為什麼非零數的 0 次方會規定為 1，而不是 0？請用自己的話說明。",
         expectedAnswerDesc: "說明非零數相除等於 1，且底數不可為 0",
         validate: function (raw, nodeId) {
-          return SemanticAnalyzerHook.analyzeExplanation({
-            nodeId: nodeId,
-            stage: 2,
-            answer: raw
-          });
+          return SemanticAnalyzerHook.analyzeExplanation({ nodeId: nodeId, stage: 2, answer: raw });
         }
       },
       stage3Check: {
         questionId: "M1-02-S3-CHECK",
         dimension: "概念理解",
-        prompt:
-          "【理解檢查】若 (x - 3)^0 = 1 成立，x 必須滿足什麼條件？（請輸入 A、B 或 C）\n" +
-          "A. x 可以是任意實數\n" +
-          "B. x ≠ 3\n" +
-          "C. x > 3",
+        prompt: "【理解檢查】若 (x - 3)^0 = 1 成立，x 必須滿足什麼條件？（請輸入 A、B 或 C）\nA. x 可以是任意實數\nB. x ≠ 3\nC. x > 3",
         expectedAnswer: "B",
         validate: function (raw) {
           var u = String(raw || "").trim().toUpperCase();
@@ -365,29 +326,23 @@
         validate: function (raw) {
           var t = String(raw || "").trim();
           if (!t) return { verdict: "unclear", ok: false, errorCode: "E06", supplementPrompt: "請先輸入計算結果。" };
-          if (!/^[\+\-]?\d+$/.test(t)) {
-            return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入整數數值結果。" };
-          }
+          if (!/^[\+\-]?\d+$/.test(t)) return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入整數數值結果。" };
           if (t === "8") return { verdict: "pass", ok: true, errorCode: null };
           if (t === "7" || t === "2" || t === "0") return { verdict: "incorrect", ok: false, errorCode: "E01", contextKey: null };
           if (t === "9") return { verdict: "incorrect", ok: false, errorCode: "E07", contextKey: null };
           return { verdict: "incorrect", ok: false, errorCode: "E04", contextKey: null };
         }
       },
-      // 人工驗算：明確區分「組數」與「人數」。現有 3 組（每組 4 人，共 12 人），另增 1 組（以 6^0 = 1 組表示，有 4 人）。總組數 = 3 + 6^0 = 3 + 1 = 4 組。
       stage5Remedial: {
         questionId: "M1-02-S5-REMEDIAL",
         dimension: "應用能力",
         contextNote: "情境轉換：明確區分「組數」與「人數」（每組 4 人；現有 3 組共 12 人，新增 6^0 = 1 組有 4 人）",
-        prompt:
-          "【個人化補救題】社團活動中，每組有 4 人。目前已有 3 組（共 12 人），另外成立 1 個新小組，其組數以 6^0（等於 1 組，該組有 4 人）表示。請問目前共有幾「組」（3 + 6^0）？",
+        prompt: "【個人化補救題】社團活動中，每組有 4 人。目前已有 3 組（共 12 人），另外成立 1 個新小組，其組數以 6^0（等於 1 組，該組有 4 人）表示。請問目前共有幾「組」（3 + 6^0）？",
         expectedAnswer: "4",
         validate: function (raw) {
           var t = String(raw || "").trim();
           if (!t) return { verdict: "unclear", ok: false, errorCode: "E06", supplementPrompt: "請輸入總組數。" };
-          if (!/^[\+\-]?\d+$/.test(t)) {
-            return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入整數組數。" };
-          }
+          if (!/^[\+\-]?\d+$/.test(t)) return { verdict: "unclear", ok: false, errorCode: "E05", supplementPrompt: "請輸入整數組數。" };
           if (t === "4") return { verdict: "pass", ok: true, errorCode: null };
           if (t === "16" || t === "12") return { verdict: "incorrect", ok: false, errorCode: "E06", contextKey: null };
           if (t === "3") return { verdict: "incorrect", ok: false, errorCode: "E01", contextKey: null };
@@ -403,7 +358,6 @@
     }
   };
 
-  // 5. 學習紀錄儲存層（與教學邏輯分離）
   var STORAGE_KEY = "ai_edu_phase2_records_v2";
 
   var TeachingRecordRepository = {
@@ -419,9 +373,7 @@
     saveAll: function (allMap) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(allMap));
-      } catch (e) {
-        // 忽略本機儲存例外
-      }
+      } catch (e) {}
     },
     getNodeSession: function (studentId, nodeId) {
       var all = this.loadAll();
@@ -457,7 +409,6 @@
     }
   };
 
-  // 6. 依作答次數取得下一個提示層級（完整補全函式）
   function getNextHintLevel(session) {
     var order = ["H1", "H2", "H3", "H4"];
     var currentIdx = typeof session.hintLevelIndex === "number" ? session.hintLevelIndex : 0;
@@ -467,13 +418,11 @@
     return chosenLevel;
   }
 
-  // 7. 五維度獨立精熟度計算器（計算不同題目識別碼數量、區分首次與重複作答、不混算總正確率）
   function evaluateFiveDimensions(logs, remedialPassed) {
     var list = Array.isArray(logs) ? logs : [];
     var minDistinct = EXPERIMENTAL_PARAMS.minDistinctQuestionsPerDimension;
     var dimsOrder = ["概念理解", "基礎運算", "推理能力", "應用能力", "獨立完成程度"];
 
-    // 依題目識別碼追蹤首次作答與累計次數（同一題重複作答不增加「不同題目數」）
     var questionAttemptMap = {};
     var distinctQuestionsByDim = {
       概念理解: {},
@@ -540,4 +489,45 @@
         var okFirst = firstArr.filter(function (v) { return v; }).length;
         var ratio = firstArr.length > 0 ? okFirst / firstArr.length : 0;
         var state = "需要加強";
-        if (r
+        if (ratio >= EXPERIMENTAL_PARAMS.masteryMinFirstTryRatio) {
+          state = "精熟";
+          masteredDimCount += 1;
+        } else if (ratio >= EXPERIMENTAL_PARAMS.progressMinRatio) {
+          state = "穩定進步";
+        }
+        dimensionResults[dim] = {
+          state: state,
+          detail: "首次作答正確 " + okFirst + "/" + firstArr.length + "（不同題目 " + distinctCount + " 題）"
+        };
+      }
+    });
+
+    var totalDistinctCount = Object.keys(distinctAllQuestions).length;
+    if (totalDistinctCount < minDistinct || firstTryTotal < minDistinct) {
+      dimensionResults["獨立完成程度"] = {
+        state: "尚需更多練習",
+        detail:
+          "不同題目 " +
+          totalDistinctCount +
+          "/" +
+          minDistinct +
+          " 題｜補救題證據：" +
+          (remedialPassed ? "已通過" : "尚未通過或未作答")
+      };
+    } else {
+      qualifiedCount += 1;
+      var firstRatioAll = firstTryTotal > 0 ? firstTryCorrect / firstTryTotal : 0;
+      var indState = "需要加強";
+      if (firstRatioAll >= EXPERIMENTAL_PARAMS.masteryMinFirstTryRatio && maxHintNum <= 2) {
+        indState = "精熟";
+        masteredDimCount += 1;
+      } else if (firstRatioAll >= EXPERIMENTAL_PARAMS.progressMinRatio || repeatCorrect > 0) {
+        indState = "穩定進步";
+      }
+      dimensionResults["獨立完成程度"] = {
+        state: indState,
+        detail:
+          "首次正確 " +
+          firstTryCorrect +
+          "/" +
+          firstTr
