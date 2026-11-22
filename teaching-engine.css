@@ -1,4 +1,4 @@
-/* 第二階段：學生端教學引擎樣式（獨立檔案） */
+/* 第二階段：學生端教學引擎樣式 - 第一輪品質修正微調 */
 .te-root {
   color: #f1f5f9;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
@@ -185,7 +185,7 @@
   margin: 10px 0;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 760px) {
   .te-dim-grid {
     grid-template-columns: repeat(5, 1fr);
   }
@@ -219,5 +219,5 @@
 }
 
 .te-log-list li {
-  margin-bottom: 5px;
+  margin-bottom: 6px;
 }
