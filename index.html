@@ -47,7 +47,7 @@ var SB_KEY = "sb_publishable_z7l4i49w93dZ0yrR5SPbVw_ShVGKm0J";
 var ADMIN_KEY = "ADMIN2026";
 
 var S = {
-  tab: "student", studentView: "home", launchMode: "X-1", preferredNode: "CH2-L2",
+  tab: "student", studentView: "home", launchMode: "X-1", preferredNode: "CH2-L1",
   stu: localStorage.getItem("edu_stu") || "", code: localStorage.getItem("edu_code") || "MATH2026",
   msg: "", tName: localStorage.getItem("edu_tname") || "", adminOk: sessionStorage.getItem("edu_adm") === "1"
 };
@@ -80,7 +80,7 @@ function goTab(t) {
 }
 
 window.__openTeachingEngineForNode = function (nodeOrLevelId, mode) {
-  S.preferredNode = nodeOrLevelId || "CH2-L2";
+  S.preferredNode = nodeOrLevelId || "CH2-L1";
   S.launchMode = mode || "X-1";
   S.studentView = "practice";
   S.msg = "";
@@ -211,5 +211,3 @@ render();
 </script>
 </body>
 </html>
-<script src="./teaching-engine.js"></script>
-<script src="./student-home.js"></script>
