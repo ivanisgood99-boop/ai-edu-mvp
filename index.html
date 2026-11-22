@@ -9,7 +9,7 @@
   <style>
     *{box-sizing:border-box}
     body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;background:#f7f9f5;color:#1e293b;line-height:1.55}
-    .wrap{max-width:860px;margin:0 auto}
+    .wrap{max-width:920px;margin:0 auto}
     .card{background:#fff;border:1px solid #d1fae5;border-radius:14px;padding:16px;margin-bottom:12px}
     .btn{border:0;border-radius:8px;padding:8px 13px;background:#047857;color:#fff;font-weight:700;cursor:pointer;margin-right:6px;margin-top:6px;font-size:13px}
     .btn-soft{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
@@ -31,7 +31,7 @@
   <div id="err"></div>
   <div class="card">
     <strong style="color:#064e3b">AI 個人化教育平台</strong>
-    <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#78350f;font-weight:700">教學引擎</span><br>
+    <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#78350f;font-weight:700">108課綱・星航學習</span><br>
     <button type="button" class="btn" onclick="goTab('student')">學生學習</button>
     <button type="button" class="btn btn-soft" onclick="goTab('teacher')">教師班級</button>
     <button type="button" class="btn btn-soft" onclick="goTab('admin')">平台管理</button>
@@ -42,12 +42,12 @@
 <script src="./teaching-engine.js"></script>
 <script src="./student-home.js"></script>
 <script>
-var SB_URL = "https://antfbdsqrznnssdvpzcn.supabase.co";
+var SB_URL = "[https://antfbdsqrznnssdvpzcn.supabase.co](https://antfbdsqrznnssdvpzcn.supabase.co)";
 var SB_KEY = "sb_publishable_z7l4i49w93dZ0yrR5SPbVw_ShVGKm0J";
 var ADMIN_KEY = "ADMIN2026";
 
 var S = {
-  tab: "student", studentView: "home", launchMode: "topic", preferredNode: "M1-01",
+  tab: "student", studentView: "home", launchMode: "X-1", preferredNode: "CH2-L2",
   stu: localStorage.getItem("edu_stu") || "", code: localStorage.getItem("edu_code") || "MATH2026",
   msg: "", tName: localStorage.getItem("edu_tname") || "", adminOk: sessionStorage.getItem("edu_adm") === "1"
 };
@@ -70,7 +70,8 @@ function callDb(tbl, method, q, body) {
   return fetch(SB_URL + "/rest/v1/" + tbl + (q ? "?" + q : ""), { method: method || "GET", headers: h, body: body ? JSON.stringify(body) : undefined })
     .then(function (r) { return r.text().then(function (t) { if (!r.ok) throw new Error("HTTP " + r.status + " " + t); return t ? JSON.parse(t) : null; }); });
 }
-  function goTab(t) {
+
+function goTab(t) {
   S.tab = t; S.msg = "";
   if (t === "student") S.studentView = "home";
   var e = document.getElementById("err");
@@ -78,10 +79,9 @@ function callDb(tbl, method, q, body) {
   render();
 }
 
-window.__openTeachingEngineForNode = function (nodeId, mode) {
-  var allowed = ["M1-01", "M1-02", "LC-01", "LC-02", "LC-03", "LC-04", "LC-05", "LC-06", "LC-ASSESS"];
-  if (allowed.indexOf(nodeId) !== -1) S.preferredNode = nodeId;
-  S.launchMode = mode || "topic";
+window.__openTeachingEngineForNode = function (nodeOrLevelId, mode) {
+  S.preferredNode = nodeOrLevelId || "CH2-L2";
+  S.launchMode = mode || "X-1";
   S.studentView = "practice";
   S.msg = "";
   render();
@@ -158,12 +158,12 @@ function render() {
       return;
     }
 
-    var modeText = S.launchMode === "school" ? "學校課程模式" : "主題學習模式";
+    var modeText = S.launchMode === "X-2" ? "刷題練習階段" : "觀念學習階段";
     h +=
       "<div class=\"te-practice-shell\">" +
       "<div class=\"te-practice-toolbar\">" +
-        "<button type='button' class='te-btn secondary' onclick='S.studentView=\"home\";render()'>← 回到宇宙探索首頁</button>" +
-        "<span class='te-practice-mode-badge'>目前入口：" + esc(modeText) + "</span>" +
+        "<button type='button' class='te-btn secondary' onclick='S.studentView=\"home\";render()'>← 回到宇宙探索地圖</button>" +
+        "<span class='te-practice-mode-badge'>目前模式：" + esc(modeText) + "</span>" +
       "</div>" +
       "<div class=\"te-practice-fields\">" +
         "<div class=\"te-practice-field\"><label for='stuInp'>學生姓名（用於區分本機學習紀錄）</label><input id='stuInp' value='" + esc(S.stu) + "' placeholder='例如：陳小華'></div>" +
@@ -178,12 +178,16 @@ function render() {
     if (si) {
       si.addEventListener("input", function (e) {
         S.stu = e.target.value; localStorage.setItem("edu_stu", S.stu);
-        if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") window.TeachingEngineModule.render(document.getElementById("te-mount"), S.preferredNode);
+        if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") {
+          window.TeachingEngineModule.render(document.getElementById("te-mount"), S.preferredNode);
+        }
       });
     }
     var ci = document.getElementById("codeInp");
     if (ci) ci.addEventListener("input", function (e) { S.code = e.target.value; localStorage.setItem("edu_code", S.code); });
-    if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") window.TeachingEngineModule.render(document.getElementById("te-mount"), S.preferredNode);
+    if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") {
+      window.TeachingEngineModule.render(document.getElementById("te-mount"), S.preferredNode);
+    }
     return;
   }
 
