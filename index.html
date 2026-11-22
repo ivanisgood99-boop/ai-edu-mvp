@@ -17,7 +17,7 @@
     input,textarea{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 10px;font-size:14px;font-family:inherit}
     .box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px;margin:10px 0;font-size:13px;white-space:pre-line}
     .diag{background:#fff1f2;border-color:#fecdd3;color:#881337}
-    #err{display:none;padding:10px;background:#fff1f2;border:1px solid #e11d48;color:#881337;border:1px solid #e11d48;border-radius:10px;font-size:12px;margin-bottom:12px;white-space:pre-wrap}
+    #err{display:none;padding:10px;background:#fff1f2;border:1px solid #e11d48;color:#881337;border-radius:10px;font-size:12px;margin-bottom:12px;white-space:pre-wrap}
   </style>
   <script>
     window.onerror = function (m, u, l) {
@@ -62,7 +62,10 @@ var S = {
 };
 
 function syncPracticeTheme() {
+  var isHome = S.tab === "student" && S.studentView === "home";
   var isPractice = S.tab === "student" && S.studentView === "practice";
+  document.documentElement.classList.toggle("sh-home-html", isHome);
+  document.body.classList.toggle("sh-home-active", isHome);
   document.documentElement.classList.toggle("te-practice-html", isPractice);
   document.body.classList.toggle("te-practice-active", isPractice);
 }
