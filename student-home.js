@@ -1,11 +1,16 @@
-/* 學生端宇宙探索地圖：原創 Canvas 星空星塵、星球軌道、Stage 嚴格解鎖順序 */
+/* 學生端宇宙探索地圖：體力、星塵、探索度、軌道連線、每日任務、快問快答與 Stage 嚴格解鎖 */
 (function () {
   "use strict";
+
+  var MAX_STAMINA = 5;
+  var STAMINA_KEY = "ai_edu_cosmos_stamina_v1";
 
   var state = {
     activeChapterId: "CH-2",
     selectedLevelId: "CH2-L1",
     infoDrawer: null,
+    quickQuizAnswer: "",
+    quickQuizFeedback: "",
     canvasCleanup: null
   };
 
@@ -22,6 +27,32 @@
     var v = el && el.value ? el.value.trim() : "";
     var ls = (localStorage.getItem("edu_stu") || "").trim();
     return v || ls || "訪客學員";
+  }
+
+  function getStaminaData(sid) {
+    var map = {};
+    try {
+      var raw = localStorage.getItem(STAMINA_KEY);
+      map = raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      map = {};
+    }
+    var key = sid || "訪客學員";
+    if (!map[key] || typeof map[key].stamina !== "number") {
+      map[key] = { stamina: MAX_STAMINA, stardust: 0 };
+      try { localStorage.setItem(STAMINA_KEY, JSON.stringify(map)); } catch (e2) {}
+    }
+    return { map: map, key: key, data: map[key] };
+  }
+
+  function saveStaminaData(sid, nextData) {
+    var sObj = getStaminaData(sid);
+    sObj.map[sObj.key] = {
+      stamina: Math.max(0, Math.min(MAX_STAMINA, nextData.stamina)),
+      stardust: Math.max(0, nextData.stardust)
+    };
+    try { localStorage.setItem(STAMINA_KEY, JSON.stringify(sObj.map)); } catch (e) {}
+    return sObj.map[sObj.key];
   }
 
   function getFallbackChapters() {
@@ -339,6 +370,10 @@
     if (!target) return;
     var eng = window.TeachingEngineModule;
     var sid = getStudentName();
+    var stamObj = getStaminaData(sid);
+    var stamina = stamObj.data.stamina;
+    var stardust = stamObj.data.stardust;
+
     var chapters = (eng && eng.chapters) || getFallbackChapters();
     var cid = state.activeChapterId;
     var ch = chapters[cid] || chapters["CH-2"];
@@ -347,6 +382,9 @@
     if (!chComp.levels.some(function (x) { return x.levelId === state.selectedLevelId; }) && chComp.levels[0]) {
       state.selectedLevelId = chComp.levels[0].levelId;
     }
+
+    var totalLevels = chComp.totalCount || 1;
+    var explorePct = Math.round((chComp.completedCount / totalLevels) * 100);
 
     var chTabsHtml = Object.keys(chapters).map(function (k) {
       var item = chapters[k];
@@ -385,9 +423,26 @@
       "<button type=\"button\" class=\"sh-mini-btn primary\" id=\"sh-open-final\" " + (!chComp.allCompleted ? "disabled style=\"opacity:0.45;\"" : "") + ">開啟單元總結</button>" +
       "</div>";
 
+    var statusBarHtml =
+      "<div class=\"cosmos-status-strip\" style=\"display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;background:rgba(17,28,53,0.9);border:1px solid rgba(148,163,184,0.3);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;\">" +
+      "<div><strong>⚡ 體力：</strong>" + stamina + " / " + MAX_STAMINA + " <strong>✦ 星塵：</strong>" + stardust + " <strong>🧭 本章探索度：</strong>" + explorePct + "%（" + chComp.completedCount + "/" + totalLevels + " 星球）</div>" +
+      "<button type=\"button\" class=\"sh-mini-btn\" id=\"sh-refill-stamina\">補充體力（+1）</button>" +
+      "</div>";
+
+    var quickQuizHtml =
+      "<div class=\"cosmos-quick-quiz\" style=\"background:rgba(17,28,53,0.88);border:1px solid rgba(148,163,184,0.3);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px;\">" +
+      "<div style=\"font-weight:700;color:#38BDF8;margin-bottom:6px;\">🛰️ 航行快問快答（答對可獲 +15 星塵）</div>" +
+      "<div style=\"margin-bottom:8px;color:#E2E8F0;\">若點 A(0, 0) 與點 B(3, 4) 在平面上，兩點距離是多少？（填整數）</div>" +
+      "<div style=\"display:flex;gap:8px;flex-wrap:wrap;align-items:center;\">" +
+      "<input type=\"text\" id=\"sh-qq-inp\" value=\"" + esc(state.quickQuizAnswer) + "\" placeholder=\"輸入整數答案\" style=\"width:150px;margin:0;padding:6px 10px;background:#0f172a;color:#f8fafc;border:1px solid #475569;border-radius:8px;\" />" +
+      "<button type=\"button\" class=\"sh-mini-btn primary\" id=\"sh-qq-sub\">送出快問快答</button>" +
+      "</div>" +
+      (state.quickQuizFeedback ? "<div style=\"margin-top:8px;color:#5EEAD4;font-weight:700;\">" + esc(state.quickQuizFeedback) + "</div>" : "") +
+      "</div>";
+
     var drawerHtml = "";
     if (state.infoDrawer === "profile") {
-      drawerHtml = "<div class=\"sh-drawer\"><div class=\"sh-drawer-head\"><span>學員資料</span><button type=\"button\" class=\"sh-mini-btn\" id=\"sh-close-info\">關閉</button></div><div>學員名稱：<strong>" + esc(sid) + "</strong>｜各 Stage 皆有獨立完成紀錄與嚴格解鎖順序。</div></div>";
+      drawerHtml = "<div class=\"sh-drawer\"><div class=\"sh-drawer-head\"><span>學員資料</span><button type=\"button\" class=\"sh-mini-btn\" id=\"sh-close-info\">關閉</button></div><div>學員名稱：<strong>" + esc(sid) + "</strong>｜體力：" + stamina + "/" + MAX_STAMINA + "｜星塵：" + stardust + "｜各 Stage 皆有獨立完成紀錄與嚴格解鎖順序。</div></div>";
     } else if (state.infoDrawer === "guide") {
       drawerHtml = "<div class=\"sh-drawer\"><div class=\"sh-drawer-head\"><span>Stage 解鎖與星級規則</span><button type=\"button\" class=\"sh-mini-btn\" id=\"sh-close-info\">關閉</button></div><div>Stage 1-1 初始開放；完成 Stage X-1 才解鎖 Stage X-2；完成 Stage X-2 才解鎖 Stage (X+1)-1。全部 Level 完成後解鎖 Chapter 最終評量。單純瀏覽或點擊按鈕不會直接判定完成。</div></div>";
     }
@@ -409,18 +464,46 @@
       "<button type=\"button\" class=\"sh-icon-btn\" data-info-panel=\"guide\">解鎖規則</button>" +
       "</div>" +
       "</div>" +
+      statusBarHtml +
       drawerHtml +
       "<div class=\"sh-panel\">" +
       "<div class=\"sh-section-label\">選擇星系章節（Chapter）與行星關卡（Level）</div>" +
       "<div class=\"cosmos-ch-tabs\">" + chTabsHtml + "</div>" +
       "<div class=\"cosmos-orbit-track\">" + planetsHtml + "</div>" +
       finalCardHtml +
+      quickQuizHtml +
       renderSelectedInspector(chComp) +
       "</div>" +
       "</div>" +
       "</section>";
 
     initCosmosCanvas(target);
+
+    var refillBtn = document.getElementById("sh-refill-stamina");
+    if (refillBtn) {
+      refillBtn.addEventListener("click", function () {
+        var curS = getStaminaData(getStudentName()).data;
+        saveStaminaData(getStudentName(), { stamina: curS.stamina + 1, stardust: curS.stardust });
+        renderStudentHome(target);
+      });
+    }
+
+    var qqSub = document.getElementById("sh-qq-sub");
+    var qqInp = document.getElementById("sh-qq-inp");
+    if (qqSub && qqInp) {
+      qqSub.addEventListener("click", function () {
+        var ans = qqInp.value.trim();
+        state.quickQuizAnswer = ans;
+        var curS = getStaminaData(getStudentName()).data;
+        if (ans === "5") {
+          saveStaminaData(getStudentName(), { stamina: curS.stamina, stardust: curS.stardust + 15 });
+          state.quickQuizFeedback = "答對了！sqrt(3^2 + 4^2) = 5，獲得 +15 星塵！";
+        } else {
+          state.quickQuizFeedback = "再想想看：3^2 + 4^2 = 9 + 16 = 25，開根號後是多少？（提示：5）";
+        }
+        renderStudentHome(target);
+      });
+    }
 
     target.querySelectorAll("[data-cosmos-ch]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -455,6 +538,10 @@
       bS1.addEventListener("click", function () {
         var sidNow = getStudentName();
         var lvId = state.selectedLevelId || "CH2-L1";
+        var curS = getStaminaData(sidNow).data;
+        if (curS.stamina > 0) {
+          saveStaminaData(sidNow, { stamina: curS.stamina - 1, stardust: curS.stardust + 5 });
+        }
         if (eng && eng.repository && typeof eng.repository.getSession === "function") {
           var ses1 = eng.repository.getSession(sidNow, lvId);
           ses1.stageCode = "X-1";
