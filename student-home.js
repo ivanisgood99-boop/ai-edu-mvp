@@ -1,11 +1,12 @@
-/* 學生首頁與獨立學習地圖模組（星際探索風格・綁定 Supabase Auth 與實際資料） */
+/* 學生首頁與獨立學習地圖模組（分段 1/3：狀態與帳號驗證畫面） */
 (function () {
   "use strict";
 
   var ui = {
     mode: "login",          // "login" | "signup" | "forgot"
     activePage: "home",     // "home" | "map"
-    learningTrack: "topic", // "topic"（主題學習）| "school"（學校學習）
+    learningTrack: "topic", // "topic" | "school"
+    preferredLevel: "CH2-L1",
     statusMsg: "",
     statusOk: false,
     submitting: false,
@@ -103,7 +104,6 @@
       "</div>" +
       "</section>";
   }
-
   function renderLearningMap(target) {
     var chapters = (window.LearningStatsAndResourcesModule && window.LearningStatsAndResourcesModule.CHAPTERS) || [
       { id: "CH-1", title: "Chapter 1：數與式", levels: ["CH1-L1", "CH1-L2"] },
@@ -213,7 +213,6 @@
       "<div class=\"starfield-layer\" aria-hidden=\"true\"></div>" +
       "<div class=\"space-content sh-container\">" +
 
-      // A. 個人資料區
       "<header class=\"sh-panel sh-profile-bar\">" +
       "<div class=\"sh-profile-main\">" +
       "<div class=\"sh-orbit-avatar\" aria-hidden=\"true\">🚀</div>" +
@@ -231,7 +230,6 @@
 
       (ui.statusMsg ? "<div class=\"sh-msg " + (ui.statusOk ? "ok" : "err") + "\">" + esc(ui.statusMsg) + "</div>" : "") +
 
-      // B. 航行與學習狀態
       "<section class=\"sh-panel\" aria-label=\"航行與學習狀態\">" +
       "<h2 class=\"sh-sec-title\">🛸 航行與學習狀態</h2>" +
       "<div class=\"sh-grid-4\">" +
@@ -242,7 +240,6 @@
       "</div>" +
       "</section>" +
 
-      // C. 主要學習入口（主題學習 / 學校學習）
       "<section class=\"sh-panel\" aria-label=\"主要學習入口\">" +
       "<h2 class=\"sh-sec-title\">🧭 主要學習入口</h2>" +
       "<div class=\"sh-mode-row\">" +
@@ -255,7 +252,6 @@
       "</div>" +
       "</section>" +
 
-      // D. 今日學習 & E. 成就與進度
       "<div class=\"sh-two-col\">" +
       "<section class=\"sh-panel\" aria-label=\"今日學習\">" +
       "<h2 class=\"sh-sec-title\">📅 今日學習</h2>" +
@@ -280,7 +276,6 @@
       "</div>" +
       "</section>";
   }
-
   async function syncAndRender(target) {
     if (!target) return;
     if (!window.AuthSystemModule) {
@@ -469,7 +464,7 @@
     }
   });
 
-  function renderStudentHome(target) 
+  function renderStudentHome(target) {
     if (!target) return;
     if (ui.loading) {
       target.innerHTML = "<div style=\"padding:24px;color:#e2e8f0;\">正在檢查登入狀態與同步資料...</div>";
