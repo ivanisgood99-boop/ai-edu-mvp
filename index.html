@@ -8,21 +8,22 @@
   <link rel="stylesheet" href="./teaching-engine.css" />
   <style>
     *{box-sizing:border-box}
-    body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;background:#f7f9f5;color:#1e293b;line-height:1.55}
-    .wrap{max-width:920px;margin:0 auto}
-    .card{background:#fff;border:1px solid #d1fae5;border-radius:14px;padding:16px;margin-bottom:12px}
-    .btn{border:0;border-radius:8px;padding:8px 13px;background:#047857;color:#fff;font-weight:700;cursor:pointer;margin-right:6px;margin-top:6px;font-size:13px}
-    .btn-soft{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
-    .btn-warn{background:#fffbeb;color:#78350f;border:1px solid #fde68a}
-    input,textarea{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin:6px 0 10px;font-size:14px;font-family:inherit}
-    .box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:11px;margin:10px 0;font-size:13px;white-space:pre-line}
-    .diag{background:#fff1f2;border-color:#fecdd3;color:#881337}
-    #err{display:none;padding:10px;background:#fff1f2;border:1px solid #e11d48;color:#881337;border-radius:10px;font-size:12px;margin-bottom:12px;white-space:pre-wrap}
+    html,body{max-width:100%;overflow-x:hidden;margin:0;padding:12px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;background:#070c1b;color:#f8fafc;line-height:1.55}
+    .wrap{max-width:940px;margin:0 auto}
+    .card{background:rgba(15,23,42,0.9);border:1px solid rgba(148,163,184,0.28);border-radius:14px;padding:14px;margin-bottom:12px}
+    .btn{border:0;border-radius:8px;padding:8px 12px;background:#0284c7;color:#fff;font-weight:700;cursor:pointer;margin-right:6px;margin-top:6px;font-size:13px}
+    .btn-soft{background:#1e293b;color:#e2e8f0;border:1px solid #475569}
+    input{width:100%;padding:9px 11px;border:1px solid #475569;border-radius:8px;margin:6px 0 10px;font-size:14px;background:#0f172a;color:#f8fafc}
+    .msg-ok{padding:10px;border-radius:8px;background:rgba(20,184,166,0.2);color:#5eead4;font-size:13px;margin-top:8px}
+    .msg-err{padding:10px;border-radius:8px;background:rgba(248,113,113,0.2);color:#fca5a5;font-size:13px;margin-top:8px}
+    #err{display:none;padding:10px;background:#450a0a;border:1px solid #f87171;color:#fecaca;border-radius:10px;font-size:12px;margin-bottom:12px;white-space:pre-wrap}
+    .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
+    .box{background:#1e293b;border:1px solid rgba(148,163,184,0.22);border-radius:10px;padding:10px}
   </style>
   <script>
     window.onerror = function (m, u, l) {
       var e = document.getElementById("err");
-      if (e) { e.style.display = "block"; e.textContent = "JS錯誤: " + m + " (第" + l + "行)" + (u ? " [" + u + "]" : ""); }
+      if (e) { e.style.display = "block"; e.textContent = "JS錯誤: " + m + " (第" + l + "行)"; }
     };
   </script>
 </head>
@@ -30,11 +31,11 @@
 <div class="wrap">
   <div id="err"></div>
   <div class="card">
-    <strong style="color:#064e3b">AI 個人化教育平台</strong>
-    <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#78350f;font-weight:700">108課綱・星航學習</span><br>
-    <button type="button" class="btn" onclick="goTab('student')">學生學習</button>
-    <button type="button" class="btn btn-soft" onclick="goTab('teacher')">教師班級</button>
-    <button type="button" class="btn btn-soft" onclick="goTab('admin')">平台管理</button>
+    <strong>✦ 星航智學・AI 個人化教育平台</strong><br>
+    <button type="button" class="btn" id="navHomeBtn">學生首頁</button>
+    <button type="button" class="btn btn-soft" id="navMapBtn">學習地圖</button>
+    <button type="button" class="btn btn-soft" id="navTeacherBtn">教師班級</button>
+    <button type="button" class="btn btn-soft" id="navAdminBtn">平台管理</button>
   </div>
   <div id="view" class="card">正在啟動平台...</div>
 </div>
@@ -46,189 +47,210 @@
 </script>
 <script src="./teaching-engine.js"></script>
 <script src="./auth-system.js"></script>
-<script src="./student-home.js"></script>
+<script src="./learning-stats-and-resources.js"></script>
 <script>
-var SB_URL = "https://antfbdsqrznnssdvpzcn.supabase.co";
-var SB_KEY = "sb_publishable_z7l4i49w93dZ0yrR5SPbVw_ShVGKm0J";
-var ADMIN_KEY = "ADMIN2026";
+(function () {
+  var st = {
+    tab: "student",
+    subPage: "home",
+    authMode: "login",
+    track: "topic",
+    msg: "",
+    msgOk: true,
+    user: null,
+    profile: null,
+    res: null,
+    stats: []
+  };
 
-var S = {
-  tab: "student", studentView: "home", launchMode: "X-1", preferredNode: "CH2-L1",
-  stu: localStorage.getItem("edu_stu") || "", code: localStorage.getItem("edu_code") || "MATH2026",
-  msg: "", tName: localStorage.getItem("edu_tname") || "", adminOk: sessionStorage.getItem("edu_adm") === "1"
-};
+  function esc(s) {
+    return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
 
-function syncPracticeTheme() {
-  var isHome = S.tab === "student" && S.studentView === "home";
-  var isPractice = S.tab === "student" && S.studentView === "practice";
-  document.documentElement.classList.toggle("sh-home-html", isHome);
-  document.body.classList.toggle("sh-home-active", isHome);
-  document.documentElement.classList.toggle("te-practice-html", isPractice);
-  document.body.classList.toggle("te-practice-active", isPractice);
-}
+  function starLabel(r) {
+    if (r === "THREE_STARS") return "★★★ 精熟";
+    if (r === "TWO_STARS") return "★★☆ 穩定進步";
+    if (r === "ONE_STAR") return "★☆☆ 需要加強";
+    return "尚未評定";
+  }
 
-function esc(x) { return String(x || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
-
-function callDb(tbl, method, q, body) {
-  var h = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json" };
-  if (method === "POST") h["Prefer"] = "resolution=merge-duplicates,return=representation";
-  if (method === "PATCH") h["Prefer"] = "return=representation";
-  return fetch(SB_URL + "/rest/v1/" + tbl + (q ? "?" + q : ""), { method: method || "GET", headers: h, body: body ? JSON.stringify(body) : undefined })
-    .then(function (r) { return r.text().then(function (t) { if (!r.ok) throw new Error("HTTP " + r.status + " " + t); return t ? JSON.parse(t) : null; }); });
-}
-
-function goTab(t) {
-  S.tab = t; S.msg = "";
-  if (t === "student") S.studentView = "home";
-  var e = document.getElementById("err");
-  if (e) { e.style.display = "none"; e.textContent = ""; }
-  render();
-}
-
-window.__openTeachingEngineForNode = function (nodeOrLevelId, mode) {
-  S.preferredNode = nodeOrLevelId || "CH2-L1";
-  S.launchMode = mode || "X-1";
-  S.studentView = "practice";
-  S.msg = "";
-  render();
-};
-
-function renderFallbackHome(target) {
-  target.innerHTML =
-    "<div style='background:#0b1228;color:#f8fafc;padding:18px;border-radius:12px;border:1px solid rgba(148,163,184,0.3)'>" +
-    "<h3 style='margin:0 0 8px;color:#38bdf8'>宇宙探索地圖（備援模式）</h3>" +
-    "<p style='margin:0 0 12px;color:#cbd5e1;font-size:13px'>目前使用保底畫面，可直接點擊下方按鈕進入關卡：</p>" +
-    "<button type='button' class='btn' onclick='window.__openTeachingEngineForNode(\"CH2-L1\",\"X-1\")'>進入 Stage 1-1（CH2-L1）</button>" +
-    "<button type='button' class='btn btn-soft' onclick='window.__openTeachingEngineForNode(\"CH2-L2\",\"X-1\")'>進入 Stage 2-1（CH2-L2）</button>" +
-    "</div>";
-}
-
-function checkTeacher() {
-  var out = document.getElementById("tOut");
-  var tn = (S.tName || "").trim();
-  if (!tn) { out.textContent = "請先輸入已核准的教師姓名"; return; }
-  out.textContent = "驗證中...";
-  callDb("teacher_applications", "GET", "teacher_name=eq." + encodeURIComponent(tn) + "&order=created_at.desc&limit=1")
-    .then(function (apps) {
-      if (!apps || !apps.length || apps[0].status !== "approved") {
-        out.innerHTML = "<span style='color:#b91c1c;font-weight:700'>此姓名尚未通過核准，無法查看班級資料。</span>";
-        return;
-      }
-      Promise.all([
-        callDb("student_progress", "GET", "order=updated_at.desc&limit=25"),
-        callDb("answer_logs", "GET", "order=created_at.desc&limit=25")
-      ]).then(function (res) {
-        var ps = res[0] || [], ls = res[1] || [];
-        var fmtLabel = (window.TeachingEngineModule && window.TeachingEngineModule.getTeacherLabel) || function (x) { return x; };
-        out.innerHTML = "<strong>已核准教師：" + esc(tn) + "</strong>\n\n學生進度：\n" +
-          (ps.length ? ps.map(function (p) { return "• " + esc(p.student_name) + "（" + esc(fmtLabel(p.module_id)) + "・" + esc(p.mastery_level) + "）"; }).join("\n") : "尚無") +
-          "\n\n作答紀錄：\n" +
-          (ls.length ? ls.map(function (l) { return "• " + esc(l.student_name) + "［" + esc(fmtLabel(l.module_id)) + "］「" + esc(l.student_answer) + "」→ " + (l.is_correct ? "正確" : "需再釐清"); }).join("\n") : "尚無");
-      });
-    });
-}
-
-function unlockAdm() {
-  var k = document.getElementById("admKey").value.trim();
-  if (k === ADMIN_KEY) { S.adminOk = true; sessionStorage.setItem("edu_adm", "1"); S.msg = ""; render(); loadAdm(); }
-  else { S.msg = "密鑰錯誤"; render(); }
-}
-
-function addTeacher() {
-  var nt = document.getElementById("newT").value.trim();
-  if (!nt) return;
-  callDb("teacher_applications", "POST", null, [{ teacher_name: nt, subject: "高中數學", status: "pending" }])
-    .then(function () { return callDb("audit_logs", "POST", null, [{ action: "APPLY_TEACHER", target_info: nt }]); })
-    .then(function () { loadAdm(); });
-}
-
-function decideT(id, st) {
-  callDb("teacher_applications", "PATCH", "id=eq." + id, { status: st })
-    .then(function () { return callDb("audit_logs", "POST", null, [{ action: "TEACHER_" + st.toUpperCase(), target_info: "id=" + id }]); })
-    .then(function () { loadAdm(); });
-}
-
-function loadAdm() {
-  var box = document.getElementById("admList");
-  if (!box || !S.adminOk) return;
-  callDb("teacher_applications", "GET", "order=created_at.desc&limit=25").then(function (apps) {
-    apps = apps || [];
-    box.innerHTML = "<strong>教師申請列表：</strong>\n" + (apps.length ? apps.map(function (a) {
-      var b = a.status === "pending"
-        ? " <button class='btn' style='padding:4px 8px;font-size:11px' onclick='decideT(" + a.id + ",\"approved\")'>核准</button> <button class='btn btn-warn' style='padding:4px 8px;font-size:11px' onclick='decideT(" + a.id + ",\"rejected\")'>拒絕</button>"
-        : "";
-      return "• " + esc(a.teacher_name) + "（" + esc(a.status) + "）" + b;
-    }).join("\n") : "尚無申請");
-  });
-}
-
-function render() {
-  syncPracticeTheme();
-  var v = document.getElementById("view");
-  if (!v) return;
-  v.setAttribute("data-student-home", "1");
-  var h = "";
-
-  if (S.tab === "student") {
-    if (S.studentView === "home") {
-      if (window.StudentHomeModule && typeof window.StudentHomeModule.render === "function") {
-        window.StudentHomeModule.render(v);
-      } else {
-        renderFallbackHome(v);
-      }
+  async function refreshUser() {
+    if (!window.AuthSystemModule) return;
+    var s = await window.AuthSystemModule.getCurrentSession();
+    st.user = (s && s.user) ? s.user : null;
+    if (!st.user) {
+      st.profile = null;
+      st.res = null;
+      st.stats = [];
       return;
     }
+    var b = await window.AuthSystemModule.loadStudentProfileAndResources(st.user);
+    st.profile = b.profile;
+    st.res = b.resources;
+    if (window.LearningStatsAndResourcesModule) {
+      var synced = await window.LearningStatsAndResourcesModule.syncResourcesAndRockets();
+      if (synced) st.res = synced;
+      st.stats = await window.LearningStatsAndResourcesModule.fetchStudentStatistics(st.user.id);
+    }
+  }
 
-    var modeText = S.launchMode === "X-2" ? "刷題練習階段" : "觀念學習階段";
-    h +=
-      "<div class=\"te-practice-shell\">" +
-      "<div class=\"te-practice-toolbar\">" +
-        "<button type='button' class='te-btn secondary' onclick='S.studentView=\"home\";render()'>← 回到宇宙探索地圖</button>" +
-        "<span class='te-practice-mode-badge'>目前模式：" + esc(modeText) + "</span>" +
+  function renderAuth(el) {
+    var m = st.authMode;
+    var btnText = m === "signup" ? "建立學生帳號" : (m === "forgot" ? "寄送重設信" : "正式登入");
+    var html =
+      "<h2>✦ 學生帳號驗證</h2>" +
+      "<p style='font-size:13px;color:#cbd5e1'>請先登入或註冊學生帳號（未登入不會自動建立示範學員）。</p>" +
+      "<button type='button' class='btn" + (m === "login" ? "" : " btn-soft") + "' data-m='login'>學生登入</button>" +
+      "<button type='button' class='btn" + (m === "signup" ? "" : " btn-soft") + "' data-m='signup'>學生註冊</button>" +
+      "<button type='button' class='btn" + (m === "forgot" ? "" : " btn-soft") + "' data-m='forgot'>忘記密碼</button>" +
+      "<form id='authForm'>";
+
+    if (m === "signup") {
+      html += "<label>顯示名稱<input id='aName' type='text' required placeholder='例如：ck11500712'></label>";
+    }
+    html += "<label>電子郵件<input id='aEmail' type='email' required placeholder='student@example.com'></label>";
+    if (m !== "forgot") {
+      html += "<label>密碼（至少 6 碼）<input id='aPwd' type='password' required placeholder='請輸入密碼'></label>";
+    }
+    html += "<button type='submit' class='btn'>" + btnText + "</button></form>";
+    if (st.msg) html += "<div class='" + (st.msgOk ? "msg-ok" : "msg-err") + "'>" + esc(st.msg) + "</div>";
+    el.innerHTML = html;
+
+    el.querySelectorAll("[data-m]").forEach(function (b) {
+      b.onclick = function () { st.authMode = b.getAttribute("data-m"); st.msg = ""; draw(); };
+    });
+
+    var f = document.getElementById("authForm");
+    if (f) {
+      f.onsubmit = async function (e) {
+        e.preventDefault();
+        var em = (document.getElementById("aEmail").value || "").trim();
+        var pw = document.getElementById("aPwd") ? document.getElementById("aPwd").value : "";
+        var nm = document.getElementById("aName") ? document.getElementById("aName").value.trim() : "";
+        var r;
+        if (st.authMode === "signup") r = await window.AuthSystemModule.signUpStudent(em, pw, nm);
+        else if (st.authMode === "forgot") r = await window.AuthSystemModule.sendPasswordReset(em, window.location.href);
+        else r = await window.AuthSystemModule.signInStudent(em, pw);
+        st.msgOk = Boolean(r && r.ok);
+        st.msg = (r && r.message) || "完成";
+        if (r && r.ok && st.authMode === "login") await refreshUser();
+        draw();
+      };
+    }
+  }
+
+  function renderHome(el) {
+    var name = (st.profile && st.profile.display_name) || (st.user && st.user.email) || "學員";
+    var role = (st.profile && st.profile.role) || "student";
+    var r = st.res || {};
+    var stam = typeof r.stamina === "number" ? (r.stamina + " / " + (r.stamina_max || 100)) : "尚未建立";
+    var rockets = typeof r.rocket_supplies === "number" ? r.rocket_supplies : 0;
+    var pts = typeof r.learning_points === "number" ? r.learning_points : 0;
+    var doneCnt = (st.stats || []).filter(function (x) { return x.level_completed; }).length;
+
+    el.innerHTML =
+      "<div style='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px'>" +
+      "<div><div style='font-size:12px;color:#38bdf8'>身分：" + esc(role) + "</div><h2 style='margin:2px 0'>🚀 " + esc(name) + "</h2><div style='font-size:12px;color:#94a3b8'>" + esc(st.user.email || "") + "</div></div>" +
+      "<button type='button' class='btn btn-soft' id='logoutBtn'>登出</button></div>" +
+      "<div class='grid2'>" +
+      "<div class='box'><div style='font-size:12px;color:#94a3b8'>⚡ 流星體力</div><strong>" + esc(stam) + "</strong></div>" +
+      "<div class='box'><div style='font-size:12px;color:#94a3b8'>🚀 火箭補給</div><strong>" + esc(rockets) + " 份</strong><br><button type='button' class='btn' id='useRocketBtn'>使用補給</button></div>" +
+      "<div class='box'><div style='font-size:12px;color:#94a3b8'>📘 學習點數</div><strong>" + esc(pts) + " 點</strong></div>" +
+      "<div class='box'><div style='font-size:12px;color:#94a3b8'>🏅 已完成關卡</div><strong>" + esc(doneCnt) + " 關</strong></div>" +
       "</div>" +
-      "<div class=\"te-practice-fields\">" +
-        "<div class=\"te-practice-field\"><label for='stuInp'>學生姓名（用於區分本機學習紀錄）</label><input id='stuInp' value='" + esc(S.stu) + "' placeholder='例如：陳小華'></div>" +
-        "<div class=\"te-practice-field\"><label for='codeInp'>班級邀請碼</label><input id='codeInp' value='" + esc(S.code) + "' placeholder='例如：MATH2026'></div>" +
-      "</div>" +
-      "<div id='te-mount'></div>" +
-      "</div>";
+      "<div style='margin:10px 0'><strong>學習模式：</strong>" +
+      "<button type='button' class='btn" + (st.track === "topic" ? "" : " btn-soft") + "' id='trTopic'>主題學習</button>" +
+      "<button type='button' class='btn" + (st.track === "school" ? "" : " btn-soft") + "' id='trSchool'>學校學習</button>" +
+      "<button type='button' class='btn' id='goMapBtn'>前往學習地圖</button>" +
+      "<button type='button' class='btn btn-soft' id='goEngineBtn'>進入六階段教學</button></div>" +
+      (st.msg ? "<div class='" + (st.msgOk ? "msg-ok" : "msg-err") + "'>" + esc(st.msg) + "</div>" : "");
 
-    v.innerHTML = h;
+    document.getElementById("logoutBtn").onclick = async function () {
+      st.msg = "";
+      await window.AuthSystemModule.signOutStudent();
+      await refreshUser();
+      draw();
+    };
+    document.getElementById("useRocketBtn").onclick = async function () {
+      if (!window.LearningStatsAndResourcesModule) return;
+      var out = await window.LearningStatsAndResourcesModule.consumeRocketSupply();
+      st.msgOk = Boolean(out && out.ok);
+      st.msg = out.ok ? "已使用 1 份火箭補給，恢復體力。" : (out.message || "無法使用");
+      if (out.ok && out.resources) st.res = out.resources;
+      draw();
+    };
+    document.getElementById("trTopic").onclick = function () { st.track = "topic"; st.msg = "已切換至主題學習"; st.msgOk = true; draw(); };
+    document.getElementById("trSchool").onclick = function () { st.track = "school"; st.msg = "已切換至學校學習"; st.msgOk = true; draw(); };
+    document.getElementById("goMapBtn").onclick = function () { st.subPage = "map"; st.msg = ""; draw(); };
+    document.getElementById("goEngineBtn").onclick = function () { st.subPage = "engine"; st.msg = ""; draw(); };
+  }
 
-    var si = document.getElementById("stuInp");
-    if (si) {
-      si.addEventListener("input", function (e) {
-        S.stu = e.target.value; localStorage.setItem("edu_stu", S.stu);
-        if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") {
-          window.TeachingEngineModule.render(document.getElementById("te-mount"), S.preferredNode);
-        }
+  function renderMap(el) {
+    var chs = [
+      { id: "CH-1", name: "Chapter 1：數與式", lvls: ["CH1-L1", "CH1-L2"] },
+      { id: "CH-2", name: "Chapter 2：直線與圓", lvls: ["CH2-L1", "CH2-L2"] },
+      { id: "CH-3", name: "Chapter 3：多項式", lvls: ["CH3-L1", "CH3-L2"] }
+    ];
+    var html = "<button type='button' class='btn btn-soft' id='backHome'>← 返回學生首頁</button>";
+    chs.forEach(function (c) {
+      html += "<div class='box' style='margin-top:10px'><strong>🌌 " + esc(c.name) + "</strong><div class='grid2'>";
+      c.lvls.forEach(function (lvl, i) {
+        var prevOk = i === 0 ? true : Boolean((st.stats || []).find(function (x) { return x.level_id === c.lvls[i - 1] && x.level_completed; }));
+        var cur = (st.stats || []).find(function (x) { return x.level_id === lvl; });
+        html += "<div class='box'><div><strong>🪐 " + esc(lvl) + "</strong>（" + esc(starLabel(cur && cur.star_rating)) + "）</div>" +
+          "<div style='font-size:12px;color:#cbd5e1'>X-1：" + (cur && cur.stage_x1_completed ? "完成" : "未完成") + "｜X-2：" + (cur && cur.stage_x2_completed ? "完成" : "未完成") + "</div>" +
+          "<button type='button' class='btn' " + (prevOk ? "" : "disabled") + " data-lvl='" + esc(lvl) + "'>" + (prevOk ? "開始學習" : "尚未解鎖") + "</button></div>";
       });
-    }
-    var ci = document.getElementById("codeInp");
-    if (ci) ci.addEventListener("input", function (e) { S.code = e.target.value; localStorage.setItem("edu_code", S.code); });
+      html += "</div></div>";
+    });
+    el.innerHTML = html;
+    document.getElementById("backHome").onclick = function () { st.subPage = "home"; draw(); };
+    el.querySelectorAll("[data-lvl]").forEach(function (b) {
+      b.onclick = function () { st.preferredLvl = b.getAttribute("data-lvl"); st.subPage = "engine"; draw(); };
+    });
+  }
+
+  function renderEngine(el) {
+    el.innerHTML = "<button type='button' class='btn btn-soft' id='backFromEng'>← 返回首頁</button><div id='engMount' style='margin-top:10px'></div>";
+    document.getElementById("backFromEng").onclick = function () { st.subPage = "home"; draw(); };
     if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") {
-      window.TeachingEngineModule.render(document.getElementById("te-mount"), S.preferredNode);
-    }
-    return;
-  }
-
-  if (S.tab === "teacher") {
-    h += "<h3>教師班級（限已核准教師）</h3><label>已核准教師姓名</label><input id='tInp' value='" + esc(S.tName) + "' placeholder='輸入已核准教師姓名'><button type='button' class='btn' onclick='checkTeacher()'>驗證並查看班級</button><div id='tOut' class='box'>請輸入已核准教師姓名並按驗證。</div>";
-  } else {
-    if (!S.adminOk) {
-      h += "<h3>平台管理（僅限管理員）</h3><label>管理員密鑰</label><input id='admKey' type='password' placeholder='輸入管理員密鑰'><button type='button' class='btn' onclick='unlockAdm()'>解鎖</button>" + (S.msg ? "<div class='box diag'>" + esc(S.msg) + "</div>" : "");
-    } else {
-      h += "<div style='display:flex;justify-content:space-between;align-items:center'><strong>平台管理後台</strong><button type='button' class='btn btn-soft' onclick='S.adminOk=false;sessionStorage.removeItem(\"edu_adm\");render()'>鎖定</button></div><label style='margin-top:8px'>新增教師資格申請</label><input id='newT' placeholder='輸入教師姓名'><button type='button' class='btn' onclick='addTeacher()'>送出申請</button><div id='admList' class='box'>載入中...</div>";
+      window.TeachingEngineModule.render(document.getElementById("engMount"), st.preferredLvl || "CH2-L1");
     }
   }
 
-  v.innerHTML = h;
-  var ti = document.getElementById("tInp");
-  if (ti) ti.addEventListener("input", function (e) { S.tName = e.target.value; localStorage.setItem("edu_tname", S.tName); });
-  if (S.tab === "admin" && S.adminOk) loadAdm();
-}
+  async function draw() {
+    var v = document.getElementById("view");
+    if (!v) return;
+    if (st.tab !== "student") {
+      v.innerHTML = "<p style='color:#cbd5e1'>此分頁需由後端／管理權限驗證後開放。</p>";
+      return;
+    }
+    if (!st.user) {
+      renderAuth(v);
+      return;
+    }
+    if (st.subPage === "map") renderMap(v);
+    else if (st.subPage === "engine") renderEngine(v);
+    else renderHome(v);
+  }
 
-render();
+  document.getElementById("navHomeBtn").onclick = function () { st.tab = "student"; st.subPage = "home"; draw(); };
+  document.getElementById("navMapBtn").onclick = function () { st.tab = "student"; st.subPage = "map"; draw(); };
+  document.getElementById("navTeacherBtn").onclick = function () { st.tab = "teacher"; draw(); };
+  document.getElementById("navAdminBtn").onclick = function () { st.tab = "admin"; draw(); };
+
+  if (window.AuthSystemModule && window.AuthSystemModule.subscribeAuthState) {
+    window.AuthSystemModule.subscribeAuthState(async function () {
+      await refreshUser();
+      draw();
+    });
+  }
+
+  (async function init() {
+    await refreshUser();
+    draw();
+  })();
+})();
 </script>
 </body>
 </html>
