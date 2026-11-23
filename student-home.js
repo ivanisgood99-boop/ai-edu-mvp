@@ -470,7 +470,7 @@
   });
 
   function renderStudentHome(target) 
- if (!target) return;
+    if (!target) return;
     if (ui.loading) {
       target.innerHTML = "<div style=\"padding:24px;color:#e2e8f0;\">正在檢查登入狀態與同步資料...</div>";
       syncAndRender(target);
