@@ -434,7 +434,13 @@
     if (t.closest && t.closest("#shLogout")) {
       st.msg = "";
       st.subView = "home";
-      if (window.AuthSystemModule) await window.AuthSystemModule.signOutStudent();
+      if (window.AuthSystemModule) {
+        var signedOut = await window.AuthSystemModule.signOutStudent();
+        if (!signedOut || !signedOut.ok) {
+          st.msgOk = false;
+          st.msg = (signedOut && signedOut.message) || "登出失敗，請稍後再試。";
+        }
+      }
       await refreshFromServer(root);
     }
   });
