@@ -496,18 +496,3 @@
     }
   };
 })();
-// 在教學引擎確認寫入並重算精熟程度成功後呼叫此段，通知地圖同步最新星級
-if (window.LearningStatsAndResourcesModule && typeof window.LearningStatsAndResourcesModule.commitLearningSummary === "function") {
-  window.LearningStatsAndResourcesModule.commitLearningSummary({
-    levelId: currentLevelId,
-    chapterId: currentChapterId,
-    stageId: "X-2",
-    markStageCompleted: true
-  }).then(function (r) {
-    if (r && r.ok) {
-      window.dispatchEvent(new CustomEvent("star-learning:summary-committed", {
-        detail: { levelId: currentLevelId, chapterId: currentChapterId, stats: r.stats }
-      }));
-    }
-  });
-}
