@@ -6,7 +6,7 @@
 
 ## 1. 這次已完成的資料庫遷移
 
-Supabase 專案已套用以下五筆 migration：
+Supabase 專案已套用以下七筆 migration：
 
 1. `20261124124026_learning_answer_persistence_and_progress_v1`
 2. `20261124124114_secure_learning_answer_rpc_writes`
@@ -98,6 +98,8 @@ Supabase 專案已套用以下五筆 migration：
 - 已新增 `.github/workflows/validate-javascript.yml`，會以 Node.js 20 對四個主要前端腳本執行 `node --check`。GitHub Actions run #4（run ID：45398321677）已完成，`JavaScript syntax` job 成功；四個主要前端腳本均通過 `node --check`。
 - Security Advisor 仍會對本次兩個 authenticated 可執行的 SECURITY DEFINER RPC 發出通用警告；這兩個函式使用固定 search_path、auth.uid()、Level／題目白名單及 private RLS 表。Advisor 也列出專案內其他既有 SECURITY DEFINER 函式與其他 RLS 無政策資料表，並非本次修改範圍，需獨立稽核。
 - 已建立 Draft PR #3： https://github.com/ivanisgood99-boop/ai-edu-mvp/pull/3，供檢閱與後續驗收。
+- 已新增 `docs/STUDENT_E2E_TEST_PLAN.md`，列出瀏覽器端到端測試案例與測試前置條件；目前尚無本分支預覽網址，因此尚未執行真實瀏覽器驗收。
+- 本次程式碼檢查發現並修正 Auth 資料讀取錯誤被靜默忽略、缺少 profile/resource 時使用預設資料，以及登出錯誤被忽略的問題；細節見端到端測試計畫。
 - 本次沒有合併 main，也沒有更新 GitHub Pages 正式網站。
 
 ## 6. 上線前驗收清單
