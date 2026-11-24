@@ -16,7 +16,8 @@
     user: null,
     profile: null,
     res: null,
-    stats: []
+    stats: [],
+    canvasStop: null
   };
 
   function esc(s) {
@@ -63,12 +64,6 @@
     return "尚未評定";
   }
 
-  // 新規則：同 Chapter 內所有 Level 預設獨立開放，不綁定前一 Level 是否完成
-  function isLevelIndependentUnlocked() {
-    return true;
-  }
-
-  // 同一 Level 內：觀念學習（X-1）可進入；練習應用（X-2）需觀念學習（X-1）已完成
   function canEnterStage(stat, stageCode) {
     if (stageCode === "X-2") {
       return Boolean(stat && stat.stage_x1_completed);
@@ -76,7 +71,6 @@
     return true;
   }
 
-  // 必要 Level 全部完成才解鎖 Chapter 最終評量（排除 isOptional === true 的選修 Level）
   function isChapterFinalUnlocked(ch) {
     var requiredLevels = (ch.levels || []).filter(function (lv) { return !lv.isOptional; });
     if (!requiredLevels.length) return false;
@@ -84,6 +78,121 @@
       var s = getStat(lv.levelId);
       return Boolean(s && s.level_completed);
     });
+  }
+
+  function renderPlanetSvg(styleName, isMega) {
+    if (isMega) {
+      return (
+        "<svg width=\"60\" height=\"60\" viewBox=\"0 0 64 64\" aria-hidden=\"true\">" +
+        "<circle cx=\"32\" cy=\"32\" r=\"18\" fill=\"#7c3aed\" stroke=\"#e9d5ff\" stroke-width=\"1.5\"/>" +
+        "<ellipse cx=\"32\" cy=\"32\" rx=\"29\" ry=\"8\" fill=\"none\" stroke=\"#67e8f9\" stroke-width=\"1.8\" transform=\"rotate(-18 32 32)\"/>" +
+        "</svg>"
+      );
+    }
+    var fill = "#38bdf8", ring = "#bae6fd";
+    if (styleName === "planet-amber") { fill = "#f59e0b"; ring = "#fde68a"; }
+    else if (styleName === "planet-violet") { fill = "#a855f7"; ring = "#e9d5ff"; }
+    else if (styleName === "planet-emerald") { fill = "#10b981"; ring = "#a7f3d0"; }
+    return (
+      "<svg width=\"48\" height=\"48\" viewBox=\"0 0 48 48\" aria-hidden=\"true\">" +
+      "<circle cx=\"24\" cy=\"24\" r=\"13\" fill=\"" + fill + "\"/>" +
+      "<ellipse cx=\"24\" cy=\"24\" rx=\"21\" ry=\"5\" fill=\"none\" stroke=\"" + ring + "\" stroke-width=\"1.3\" transform=\"rotate(-12 24 24)\"/>" +
+      "</svg>"
+    );
+  }
+
+  function mountCosmosCanvas(rootEl) {
+    if (typeof st.canvasStop === "function") {
+      st.canvasStop();
+      st.canvasStop = null;
+    }
+    var cvs = rootEl ? rootEl.querySelector("canvas.cosmos-canvas-bg") : null;
+    if (!cvs || !cvs.getContext) return;
+    var ctx = cvs.getContext("2d");
+    var reduced = false;
+    try {
+      reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (e) {}
+
+    var w = 360, h = 420, raf = 0;
+    var stars = [];
+    function setup() {
+      var rect = rootEl.getBoundingClientRect();
+      w = Math.max(280, Math.floor(rect.width || 640));
+      h = Math.max(320, Math.floor(rect.height || 480));
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      cvs.width = Math.floor(w * dpr);
+      cvs.height = Math.floor(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      stars = [];
+      for (var i = 0; i < 55; i++) {
+        stars.push({
+          x: ((i * 97 + 23) % 1000) / 1000 * w,
+          y: ((i * 151 + 37) % 1000) / 1000 * h,
+          r: (i % 6 === 0) ? 2.0 : 1.1,
+          phase: i * 0.6
+        });
+      }
+    }
+    function frame(t) {
+      ctx.clearRect(0, 0, w, h);
+      stars.forEach(function (s) {
+        var a = reduced ? 0.65 : (0.3 + 0.5 * (0.5 + 0.5 * Math.sin(t * 0.004 + s.phase)));
+        ctx.fillStyle = "rgba(248,250,252," + a.toFixed(2) + ")";
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      if (!reduced) raf = window.requestAnimationFrame(frame);
+    }
+    setup();
+    frame(0);
+    var onResize = function () { setup(); if (reduced) frame(0); };
+    window.addEventListener("resize", onResize);
+    st.canvasStop = function () {
+      window.removeEventListener("resize", onResize);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }
+
+  function wrapScene(themeClass, innerHtml) {
+    return (
+      "<div class=\"cosmos-scene " + esc(themeClass || "galaxy-amber-nebula") + "\">" +
+      "<canvas class=\"cosmos-canvas-bg\" aria-hidden=\"true\"></canvas>" +
+      "<div class=\"cosmos-content\">" + innerHtml + "</div>" +
+      "</div>"
+    );
+  }
+
+  function renderAuth(el) {
+    var m = st.mode;
+    var submitLabel = m === "signup" ? "建立學生帳號" : (m === "forgot" ? "寄送重設信" : "正式登入");
+    var html =
+      "<div class=\"sh-panel\" style=\"max-width:520px;margin:0 auto\">" +
+      "<div class=\"sh-nav-pill\" style=\"display:inline-block;margin-bottom:6px\">✦ 星航智學・學生帳號登入與註冊</div>" +
+      "<h2 style=\"margin:4px 0 6px\">學生登入 / 註冊</h2>" +
+      "<p style=\"margin:0 0 12px;font-size:13px;color:#cbd5e1\">請輸入電子郵件與密碼登入，或切換至「學生註冊」建立新帳號。</p>" +
+      "<div style=\"margin-bottom:10px\">" +
+      "<button type=\"button\" class=\"sh-btn" + (m === "login" ? " primary" : "") + "\" data-auth-mode=\"login\">學生登入</button>" +
+      "<button type=\"button\" class=\"sh-btn" + (m === "signup" ? " primary" : "") + "\" data-auth-mode=\"signup\">學生註冊</button>" +
+      "<button type=\"button\" class=\"sh-btn" + (m === "forgot" ? " primary" : "") + "\" data-auth-mode=\"forgot\">忘記密碼</button>" +
+      "</div>" +
+      "<form id=\"shAuthForm\">";
+
+    if (m === "signup") {
+      html += "<label style=\"display:block;font-size:13px;margin-top:8px\">顯示名稱<input id=\"shAuthName\" type=\"text\" required placeholder=\"例如：王小明\" style=\"width:100%;padding:9px;margin-top:4px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#fff\"></label>";
+    }
+    html += "<label style=\"display:block;font-size:13px;margin-top:8px\">電子郵件<input id=\"shAuthEmail\" type=\"email\" required placeholder=\"student@example.com\" style=\"width:100%;padding:9px;margin-top:4px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#fff\"></label>";
+    if (m !== "forgot") {
+      html += "<label style=\"display:block;font-size:13px;margin-top:8px\">密碼（至少 6 碼）<input id=\"shAuthPwd\" type=\"password\" required placeholder=\"請輸入密碼\" style=\"width:100%;padding:9px;margin-top:4px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#fff\"></label>";
+    }
+    html += "<button type=\"submit\" class=\"sh-btn primary\" " + (st.submitting ? "disabled" : "") + ">" + (st.submitting ? "處理中..." : esc(submitLabel)) + "</button></form>";
+    if (st.msg) {
+      html += "<div class=\"" + (st.msgOk ? "sh-banner-ok" : "sh-banner-err") + "\">" + esc(st.msg) + "</div>";
+    }
+    html += "</div>";
+    el.innerHTML = wrapScene("galaxy-amber-nebula", html);
+    mountCosmosCanvas(el);
   }
   function renderHome(el) {
     var name = (st.profile && st.profile.display_name) || (st.user && st.user.email) || "學員";
@@ -115,7 +224,8 @@
     if (st.msg) {
       html += "<div class=\"" + (st.msgOk ? "sh-banner-ok" : "sh-banner-err") + "\">" + esc(st.msg) + "</div>";
     }
-    el.innerHTML = "<div class=\"cosmos-scene galaxy-amber-nebula\"><div class=\"cosmos-content\">" + html + "</div></div>";
+    el.innerHTML = wrapScene("galaxy-amber-nebula", html);
+    mountCosmosCanvas(el);
   }
 
   function renderMap(el) {
@@ -134,16 +244,16 @@
       var x2Done = Boolean(s && s.stage_x2_completed);
       var canX2 = canEnterStage(s, "X-2");
       var starLabel = formatStar(s);
-      var prereqHint = (Array.isArray(lv.prerequisiteConcepts) && lv.prerequisiteConcepts.length)
-        ? "<div style=\"font-size:11px;color:#93c5fd;margin-top:4px\">建議先備概念：" + esc(lv.prerequisiteConcepts.join("、")) + "</div>"
-        : "";
 
       return (
         "<div class=\"map-node-row " + (idx % 2 === 0 ? "zig-left" : "zig-right") + "\">" +
         "<div class=\"planet-node\">" +
-        "<div style=\"font-size:15px;font-weight:800\">🪐 Level " + lv.levelNumber + "：" + esc(lv.title) + "</div>" +
+        "<div class=\"planet-node-head\">" +
+        renderPlanetSvg(lv.planetStyle, false) +
+        "<div>" +
+        "<div style=\"font-size:15px;font-weight:800\">Level " + lv.levelNumber + "：" + esc(lv.title) + "</div>" +
         "<span class=\"planet-star-badge\">" + esc(starLabel) + "</span>" +
-        prereqHint +
+        "</div></div>" +
         "<div class=\"planet-stage-list\">" +
         "<div>觀念學習：" + (x1Done ? "已完成" : "未完成") + "</div>" +
         "<div>練習應用：" + (x2Done ? "已完成" : (canX2 ? "未完成" : "需先完成觀念學習")) + "</div>" +
@@ -159,12 +269,15 @@
     var finalUnlocked = isChapterFinalUnlocked(ch);
     var megaHtml =
       "<div class=\"final-megastar\">" +
+      "<div style=\"display:flex;align-items:center;gap:12px;flex-wrap:wrap\">" +
+      renderPlanetSvg("", true) +
+      "<div style=\"flex:1;min-width:180px\">" +
       "<div style=\"font-size:15px;font-weight:800\">✦ " + esc((ch.finalAssessment && ch.finalAssessment.title) || (ch.title + " 最終評量")) + "</div>" +
       "<div style=\"font-size:12px;color:#ddd6fe;margin-top:4px\">" +
       (finalUnlocked ? "已解鎖：本章所有必要 Level 皆已完成。" : "尚未解鎖：需完成本章所有必要 Level 的觀念學習與練習應用。") +
-      "</div>" +
+      "</div></div>" +
       "<button type=\"button\" class=\"sh-btn primary\" " + (finalUnlocked ? "" : "disabled") + " id=\"shMegaExamBtn\">進入最終評量</button>" +
-      "</div>";
+      "</div></div>";
 
     var body =
       "<div class=\"sh-panel\">" +
@@ -178,58 +291,77 @@
       megaHtml +
       "</div>";
 
-    el.innerHTML = "<div class=\"cosmos-scene " + esc(ch.themeClass || "galaxy-amber-nebula") + "\"><div class=\"cosmos-content\">" + body + "</div></div>";
+    el.innerHTML = wrapScene(ch.themeClass, body);
+    mountCosmosCanvas(el);
   }
 
   function renderSummaryPanel(el) {
     var curStat = getStat(st.levelId);
-    var curStarText = formatStar(curStat);
     var html =
       "<div class=\"sh-panel\">" +
       "<button type=\"button\" class=\"sh-btn\" id=\"shBackMapFromSummary\">← 返回學習地圖</button>" +
       "<h2 style=\"margin:10px 0 6px\">學習總結與精熟程度確認（" + esc(st.levelId) + "）</h2>" +
-      "<div style=\"font-size:13px;color:#cbd5e1;margin-bottom:10px\">目前伺服器紀錄精熟度：<strong>" + esc(curStarText) + "</strong></div>" +
+      "<div style=\"font-size:13px;color:#cbd5e1;margin-bottom:10px\">目前紀錄精熟度：<strong>" + esc(formatStar(curStat)) + "</strong></div>" +
       "<button type=\"button\" class=\"sh-btn primary\" id=\"shConfirmSummaryBtn\" " + (st.submitting ? "disabled" : "") + ">" +
       (st.submitting ? "正在寫入與重算..." : "確認並更新精熟程度") +
       "</button>";
-
-    if (st.msg) {
-      html += "<div class=\"" + (st.msgOk ? "sh-banner-ok" : "sh-banner-err") + "\">" + esc(st.msg) + "</div>";
-    }
+    if (st.msg) html += "<div class=\"" + (st.msgOk ? "sh-banner-ok" : "sh-banner-err") + "\">" + esc(st.msg) + "</div>";
     html += "</div>";
-    el.innerHTML = "<div class=\"cosmos-scene galaxy-amber-nebula\"><div class=\"cosmos-content\">" + html + "</div></div>";
+    el.innerHTML = wrapScene("galaxy-amber-nebula", html);
+    mountCosmosCanvas(el);
   }
 
   async function refreshFromServer(target) {
-    if (!target || !window.AuthSystemModule) return;
-    var s = await window.AuthSystemModule.getCurrentSession();
-    st.loadingAuth = false;
-    st.user = (s && s.user) ? s.user : null;
-    if (!st.user) {
-      st.stats = [];
-      st.res = null;
-      target.innerHTML = "<div class=\"sh-panel\">請先於學生首頁登入正式學生帳號。</div>";
+    if (!target) return;
+    if (!window.AuthSystemModule) {
+      st.loadingAuth = false;
+      renderAuth(target);
       return;
     }
-    st.loadingData = true;
-    var b = await window.AuthSystemModule.loadStudentProfileAndResources(st.user);
-    st.profile = b.profile;
-    st.res = b.resources;
-    if (window.LearningStatsAndResourcesModule) {
-      var synced = await window.LearningStatsAndResourcesModule.syncResourcesAndRockets();
-      if (synced) st.res = synced;
-      st.stats = await window.LearningStatsAndResourcesModule.fetchStudentStatistics(st.user.id);
+    try {
+      var s = await window.AuthSystemModule.getCurrentSession();
+      st.loadingAuth = false;
+      st.user = (s && s.user) ? s.user : null;
+      if (!st.user) {
+        st.stats = [];
+        st.res = null;
+        renderAuth(target);
+        return;
+      }
+      st.loadingData = true;
+      var b = await window.AuthSystemModule.loadStudentProfileAndResources(st.user);
+      st.profile = b.profile;
+      st.res = b.resources;
+      if (window.LearningStatsAndResourcesModule) {
+        var synced = await window.LearningStatsAndResourcesModule.syncResourcesAndRockets();
+        if (synced) st.res = synced;
+        st.stats = await window.LearningStatsAndResourcesModule.fetchStudentStatistics(st.user.id);
+      }
+      st.loadingData = false;
+      if (st.subView === "map") renderMap(target);
+      else if (st.subView === "summary") renderSummaryPanel(target);
+      else renderHome(target);
+    } catch (e) {
+      st.loadingAuth = false;
+      st.loadingData = false;
+      st.msgOk = false;
+      st.msg = "讀取狀態失敗：" + (e && e.message ? e.message : String(e));
+      renderAuth(target);
     }
-    st.loadingData = false;
-    if (st.subView === "map") renderMap(target);
-    else if (st.subView === "summary") renderSummaryPanel(target);
-    else renderHome(target);
   }
 
   document.addEventListener("click", async function (ev) {
     var t = ev.target;
     var root = document.getElementById("shStudentStage");
     if (!root || !t) return;
+
+    var modeBtn = t.closest ? t.closest("[data-auth-mode]") : null;
+    if (modeBtn) {
+      st.mode = modeBtn.getAttribute("data-auth-mode") || "login";
+      st.msg = "";
+      renderAuth(root);
+      return;
+    }
 
     var chBtn = t.closest ? t.closest("[data-pick-ch]") : null;
     if (chBtn) {
@@ -295,8 +427,65 @@
       st.msg = "";
       if (typeof window.__onStudentSubViewChange === "function") window.__onStudentSubViewChange("studentHome");
       await refreshFromServer(root);
+      return;
+    }
+
+    if (t.closest && t.closest("#shUseRocket")) {
+      if (window.LearningStatsAndResourcesModule && typeof window.LearningStatsAndResourcesModule.consumeRocketSupply === "function") {
+        var r = await window.LearningStatsAndResourcesModule.consumeRocketSupply();
+        st.msgOk = Boolean(r && r.ok);
+        st.msg = r && r.ok ? "已使用 1 份火箭補給，恢復能量。" : ((r && r.message) || "無法使用火箭補給");
+        if (r && r.ok && r.resources) st.res = r.resources;
+      }
+      renderHome(root);
+      return;
+    }
+
+    if (t.closest && t.closest("#shLogout")) {
+      st.msg = "";
+      st.subView = "home";
+      if (window.AuthSystemModule) await window.AuthSystemModule.signOutStudent();
+      await refreshFromServer(root);
     }
   });
+
+  document.addEventListener("submit", async function (ev) {
+    if (!ev.target || ev.target.id !== "shAuthForm") return;
+    ev.preventDefault();
+    var root = document.getElementById("shStudentStage");
+    if (!root || st.submitting || !window.AuthSystemModule) return;
+
+    var em = (document.getElementById("shAuthEmail") && document.getElementById("shAuthEmail").value.trim()) || "";
+    var pw = (document.getElementById("shAuthPwd") && document.getElementById("shAuthPwd").value) || "";
+    var nm = (document.getElementById("shAuthName") && document.getElementById("shAuthName").value.trim()) || "";
+
+    st.submitting = true;
+    st.msgOk = true;
+    st.msg = "正在連線處理中...";
+    renderAuth(root);
+
+    var res;
+    if (st.mode === "signup") res = await window.AuthSystemModule.signUpStudent(em, pw, nm);
+    else if (st.mode === "forgot") res = await window.AuthSystemModule.sendPasswordReset(em, window.location.href);
+    else res = await window.AuthSystemModule.signInStudent(em, pw);
+
+    st.submitting = false;
+    st.msgOk = Boolean(res && res.ok);
+    st.msg = (res && res.message) || "完成";
+
+    if (res && res.ok && st.mode === "login") {
+      await refreshFromServer(root);
+    } else {
+      renderAuth(root);
+    }
+  });
+
+  if (window.AuthSystemModule && typeof window.AuthSystemModule.subscribeAuthState === "function") {
+    window.AuthSystemModule.subscribeAuthState(function () {
+      var root = document.getElementById("shStudentStage");
+      if (root) refreshFromServer(root);
+    });
+  }
 
   window.StudentHomeModule = {
     render: function (target, opts) {
