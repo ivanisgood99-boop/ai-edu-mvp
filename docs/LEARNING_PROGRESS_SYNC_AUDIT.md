@@ -102,7 +102,7 @@ Supabase 專案已套用以下七筆 migration：
 
 - 尚未使用真實學生帳號在瀏覽器完成註冊／登入／作答／刷新／重新登入／跨裝置讀取的端到端測試；目前沒有真實作答列可供驗證。
 - guide 語意評分目前不是伺服器端可信 AI 評分，只作提交參與紀錄；若產品需要將語意品質計入星級，必須新增受控伺服器評分流程。
-- 已新增 `.github/workflows/validate-javascript.yml`，會以 Node.js 20 對四個主要前端腳本執行 `node --check`。GitHub Actions run #4（run ID：45398321677）已完成，`JavaScript syntax` job 成功；四個主要前端腳本均通過 `node --check`。 最新分支驗證 run #12（run ID：45424116133）亦成功，更新後的四個主要前端腳本再次通過 `node --check`。
+- 已新增 `.github/workflows/validate-javascript.yml`，會以 Node.js 20 對四個主要前端腳本執行 `node --check`。GitHub Actions run #4（run ID：45398321677）與 Auth 修正後的 run #14（run ID：45424254773）均成功，四個主要前端腳本通過 `node --check`。run #14 之後的提交只新增原始 SQL migration 檔案及文件，沒有再修改 JavaScript。
 - Security Advisor 仍會對本次兩個 authenticated 可執行的 SECURITY DEFINER RPC 發出通用警告；這兩個函式使用固定 search_path、auth.uid()、Level／題目白名單及 private RLS 表。Advisor 也列出專案內其他既有 SECURITY DEFINER 函式與其他 RLS 無政策資料表，並非本次修改範圍，需獨立稽核。
 - 已建立 Draft PR #3： https://github.com/ivanisgood99-boop/ai-edu-mvp/pull/3，供檢閱與後續驗收。
 - 已新增 `docs/STUDENT_E2E_TEST_PLAN.md`，列出瀏覽器端到端測試案例與測試前置條件；目前尚無本分支預覽網址，因此尚未執行真實瀏覽器驗收。
