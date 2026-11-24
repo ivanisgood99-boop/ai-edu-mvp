@@ -383,3 +383,15 @@ END;
 $function$;
 REVOKE ALL ON FUNCTION public.admin_set_account_status(uuid,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.admin_set_account_status(uuid,text) TO authenticated;
+
+
+-- Pin search_path for the pre-existing SECURITY DEFINER resource and trigger functions.
+ALTER FUNCTION public.apply_learning_action_reward(text,text)
+  SET search_path = pg_catalog, public;
+ALTER FUNCTION public.sync_student_stamina_and_rockets(text)
+  SET search_path = pg_catalog, public;
+ALTER FUNCTION public.use_rocket_supply()
+  SET search_path = pg_catalog, public;
+ALTER FUNCTION public.handle_new_user_profile()
+  SET search_path = pg_catalog, public;
+REVOKE ALL ON FUNCTION public.handle_new_user_profile() FROM PUBLIC, anon, authenticated;
