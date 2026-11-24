@@ -17,6 +17,7 @@
       <div class="sh-nav-bar" id="mainNavBar">
         <button type="button" class="sh-nav-btn" data-nav="studentHome">學生首頁</button>
         <button type="button" class="sh-nav-btn" data-nav="learningMap">學習地圖</button>
+        <button type="button" class="sh-nav-btn" data-nav="rewards">星際收藏</button>
         <button type="button" class="sh-nav-btn" data-nav="teacher">教師班級</button>
         <button type="button" class="sh-nav-btn" data-nav="admin">平台管理</button>
       </div>
@@ -34,11 +35,12 @@
   <script src="./auth-system.js"></script>
   <script src="./learning-stats-and-resources.js"></script>
   <script src="./teaching-engine.js"></script>
+  <script src="./role-dashboards.js"></script>
   <script src="./student-home.js"></script>
   <script>
     (function () {
       var NAV_STORAGE_KEY = "ai_edu_active_nav_v1";
-      var VALID_NAVS = ["studentHome", "learningMap", "teacher", "admin"];
+      var VALID_NAVS = ["studentHome", "learningMap", "rewards", "teacher", "admin"];
 
       function readSavedNav() {
         try {
@@ -78,7 +80,7 @@
         if (!stage) return;
 
         if (currentNav === "studentHome" || currentNav === "learningMap") {
-          stage.innerHTML = "<div id=\"shStudentStage\"></div>";
+          stage.innerHTML = "<div id=\\"shStudentStage\\"></div>";
           if (window.StudentHomeModule && typeof window.StudentHomeModule.render === "function") {
             window.StudentHomeModule.render(document.getElementById("shStudentStage"), {
               subView: currentNav === "learningMap" ? "map" : "home"
@@ -87,20 +89,14 @@
           return;
         }
 
-        if (currentNav === "teacher") {
-          stage.innerHTML =
-            "<div class=\"sh-panel\">" +
-            "<h2 style=\"margin:0 0 8px\">教師班級</h2>" +
-            "<p style=\"margin:0;font-size:13px;color:#cbd5e1\">教師班級檢視與授權班級名單功能依正式帳號與權限驗證運作，目前未開啟未授權資料。</p>" +
-            "</div>";
+        if (currentNav === "rewards" || currentNav === "teacher" || currentNav === "admin") {
+          if (window.RoleDashboardModule && typeof window.RoleDashboardModule.render === "function") {
+            window.RoleDashboardModule.render(stage, currentNav);
+          } else {
+            stage.innerHTML = "<div class=\\"sh-panel\\">功能模組尚未載入，請重新整理。</div>";
+          }
           return;
         }
-
-        stage.innerHTML =
-          "<div class=\"sh-panel\">" +
-          "<h2 style=\"margin:0 0 8px\">平台管理</h2>" +
-          "<p style=\"margin:0;font-size:13px;color:#cbd5e1\">平台管理操作需透過受信任後端與管理權限驗證，前端不寫死管理員密鑰。</p>" +
-          "</div>";
       }
 
       document.getElementById("mainNavBar").addEventListener("click", function (ev) {
