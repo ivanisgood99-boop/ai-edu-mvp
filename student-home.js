@@ -341,6 +341,9 @@
       st.res = b.resources;
       if (st.profile && (st.profile.role === "teacher" || st.profile.role === "admin")) {
         st.loadingData = false;
+        if (typeof window.__onStudentSubViewChange === "function") {
+          window.__onStudentSubViewChange(st.profile.role);
+        }
         if (window.RoleDashboardModule) {
           window.RoleDashboardModule.render(target, st.profile.role);
         } else {
