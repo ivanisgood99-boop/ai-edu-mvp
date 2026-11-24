@@ -295,6 +295,38 @@
     mountCosmosCanvas(el);
   }
 
+  function renderStageView(el) {
+    var stageTitle = st.stageCode === "X-2" ? "練習應用" : "觀念學習";
+    var steps = st.stageCode === "X-2"
+      ? ["1. 互動練習", "2. 個人化加強", "3. 學習總結"]
+      : ["1. 教材學習", "2. 引導問題", "3. 理解檢查"];
+
+    var lvObj = null;
+    getChapters().forEach(function (c) {
+      (c.levels || []).forEach(function (l) {
+        if (l.levelId === st.levelId) lvObj = l;
+      });
+    });
+
+    var lessonHtml = (lvObj && Array.isArray(lvObj.lessons) && lvObj.lessons.length)
+      ? lvObj.lessons.map(function (txt) { return "<li style=\"margin-bottom:6px\">" + esc(txt) + "</li>"; }).join("")
+      : "<li>請依課程概念逐步完成本階段學習。</li>";
+
+    var html =
+      "<div class=\"sh-panel\">" +
+      "<button type=\"button\" class=\"sh-btn\" id=\"shBackMapFromStage\">← 返回學習地圖</button>" +
+      "<button type=\"button\" class=\"sh-btn\" id=\"shBackHomeFromStage\">返回學生首頁</button>" +
+      "<h2 style=\"margin:10px 0 4px\">" + esc(st.levelId) + (lvObj ? "：" + esc(lvObj.title) : "") + "・" + esc(stageTitle) + "</h2>" +
+      "<div style=\"font-size:12px;color:#7dd3fc;margin-bottom:10px\">階段步驟：" + esc(steps.join(" → ")) + "</div>" +
+      "<ul style=\"font-size:14px;line-height:1.6;padding-left:20px;margin:0 0 12px\">" + lessonHtml + "</ul>" +
+      "<button type=\"button\" class=\"sh-btn primary\" data-open-summary=\"" + esc(st.levelId) + "\">前往學習總結與更新精熟度</button>";
+
+    if (st.msg) html += "<div class=\"" + (st.msgOk ? "sh-banner-ok" : "sh-banner-err") + "\">" + esc(st.msg) + "</div>";
+    html += "</div>";
+    el.innerHTML = wrapScene("galaxy-amber-nebula", html);
+    mountCosmosCanvas(el);
+  }
+
   function renderSummaryPanel(el) {
     var curStat = getStat(st.levelId);
     var html =
@@ -339,6 +371,7 @@
       }
       st.loadingData = false;
       if (st.subView === "map") renderMap(target);
+      else if (st.subView === "stage") renderStageView(target);
       else if (st.subView === "summary") renderSummaryPanel(target);
       else renderHome(target);
     } catch (e) {
@@ -371,20 +404,38 @@
       return;
     }
 
+    var lvlBtn = t.closest ? t.closest("[data-go-lvl]") : null;
+    if (lvlBtn && !lvlBtn.disabled) {
+      st.levelId = lvlBtn.getAttribute("data-go-lvl") || "CH1-L1";
+      st.stageCode = lvlBtn.getAttribute("data-go-stg") || "X-1";
+      st.subView = "stage";
+      st.msg = "";
+      renderStageView(root);
+      return;
+    }
+
+    if (t.closest && (t.closest("#shBackMapFromStage") || t.closest("#shBackMapFromSummary"))) {
+      st.subView = "map";
+      st.msg = "";
+      if (typeof window.__onStudentSubViewChange === "function") window.__onStudentSubViewChange("learningMap");
+      await refreshFromServer(root);
+      return;
+    }
+
+    if (t.closest && t.closest("#shBackHomeFromStage")) {
+      st.subView = "home";
+      st.msg = "";
+      if (typeof window.__onStudentSubViewChange === "function") window.__onStudentSubViewChange("studentHome");
+      await refreshFromServer(root);
+      return;
+    }
+
     var sumBtn = t.closest ? t.closest("[data-open-summary]") : null;
     if (sumBtn) {
       st.levelId = sumBtn.getAttribute("data-open-summary") || "CH1-L1";
       st.subView = "summary";
       st.msg = "";
       renderSummaryPanel(root);
-      return;
-    }
-
-    if (t.closest && t.closest("#shBackMapFromSummary")) {
-      st.subView = "map";
-      st.msg = "";
-      if (typeof window.__onStudentSubViewChange === "function") window.__onStudentSubViewChange("learningMap");
-      await refreshFromServer(root);
       return;
     }
 
