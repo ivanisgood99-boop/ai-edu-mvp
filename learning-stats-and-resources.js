@@ -46,6 +46,17 @@
       return { ok: false, message: "缺少 level_id，無法更新精熟程度。" };
     }
 
+    // Ensure all earlier answers for this Level have reached the server before recomputing progress.
+    if (window.TeachingEngineModule && typeof window.TeachingEngineModule.flushLearningSync === "function") {
+      var pendingSync = await window.TeachingEngineModule.flushLearningSync(levelId);
+      if (!pendingSync.ok) {
+        return {
+          ok: false,
+          message: "仍有作答紀錄尚未成功同步，暫時不更新正式精熟度。請確認網路後重新嘗試。原因：" + pendingSync.message
+        };
+      }
+    }
+
     var rpcRes = await c.rpc("save_summary_and_recompute_level", {
       p_level_id: levelId,
       p_chapter_id: (opts && opts.chapterId) || null,
