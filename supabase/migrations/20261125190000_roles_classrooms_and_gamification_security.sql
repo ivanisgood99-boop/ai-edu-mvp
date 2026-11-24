@@ -328,3 +328,19 @@ END;
 $function$;
 REVOKE ALL ON FUNCTION public.equip_skin(text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.equip_skin(text) TO authenticated;
+
+
+-- Teachers may see only the profiles of students enrolled in their own classes.
+DROP POLICY IF EXISTS profiles_teacher_read_students ON public.profiles;
+CREATE POLICY profiles_teacher_read_students ON public.profiles
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.class_enrollments ce
+      JOIN public.classes cl ON cl.id=ce.class_id
+      WHERE ce.student_id=profiles.id
+        AND cl.teacher_id=auth.uid()
+        AND public.is_active_teacher()
+    )
+  );
