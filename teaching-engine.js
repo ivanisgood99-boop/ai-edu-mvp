@@ -634,35 +634,30 @@
     }
   };
 
+  // Level 彼此獨立；僅同一 Level 的 X-2 必須等待該 Level 的 X-1 完成。
   function getStrictStageAccess(sid, levelId, stageCode) {
     var lv = LEVEL_MAP[levelId] || LEVELS[0];
-    var seq = getOrderedChapterStages(lv.chapterId);
-    var targetKey = lv.levelId + "::" + stageCode;
-    var idx = seq.findIndex(function (item) { return item.key === targetKey; });
     var curSes = Repo.getSession(sid, lv.levelId);
     var completed = isStageFormallyCompleted(curSes, stageCode);
 
-    if (idx <= 0) {
+    if (stageCode !== "X-2") {
       return {
         allowed: true,
         completed: completed,
         status: completed ? "completed" : "available",
         statusText: completed
-          ? "已完成 Stage " + seq[0].code + "｜" + seq[0].stageTitle + "（可重新查看）。"
-          : "目前可進行 Stage " + seq[0].code + "｜" + seq[0].stageTitle + "。"
+          ? "已完成此 Level 的觀念學習（可重新查看）。"
+          : "目前可進行此 Level 的觀念學習。"
       };
     }
 
-    var prev = seq[idx - 1];
-    var prevSes = Repo.getSession(sid, prev.levelId);
-    var prevDone = isStageFormallyCompleted(prevSes, prev.stageCode);
-
-    if (!prevDone) {
+    var x1Done = isStageFormallyCompleted(curSes, "X-1");
+    if (!x1Done) {
       return {
         allowed: false,
         completed: false,
         status: "locked",
-        statusText: "完成 Stage " + prev.code + "｜" + prev.stageTitle + "，才能解鎖 Stage " + seq[idx].code + "｜" + seq[idx].stageTitle + "。"
+        statusText: "請先完成此 Level 的觀念學習，才能解鎖練習應用。"
       };
     }
 
@@ -671,8 +666,8 @@
       completed: completed,
       status: completed ? "completed" : "available",
       statusText: completed
-        ? "已完成 Stage " + seq[idx].code + "｜" + seq[idx].stageTitle + "（可重新查看）。"
-        : "目前可進行 Stage " + seq[idx].code + "｜" + seq[idx].stageTitle + "。"
+        ? "已完成此 Level 的練習應用（可重新查看）。"
+        : "目前可進行此 Level 的練習應用。"
     };
   }
 
@@ -1223,14 +1218,49 @@
     });
 
     var compLv = document.getElementById("te-complete-level");
-    if (compLv) compLv.addEventListener("click", function () {
+    if (compLv) compLv.addEventListener("click", async function () {
       var cur = Repo.getSession(getSid(), lv.levelId);
       var ev = Repo.saveAndSyncMastery(cur);
-      cur.lastFeedback = cur.levelCompleted
-        ? ("已更新「" + lv.title + "」學習總結與星球精熟度：" + ev.studentLabel + "。")
-        : ("目前尚未完成本 Level 正式條件（" + ev.detail + "），已同步最新狀態。");
-      cur.lastFeedbackType = cur.levelCompleted ? "ok" : "guide";
+      if (!cur.levelCompleted) {
+        cur.lastFeedback = "目前尚未完成本 Level 正式條件（" + ev.detail + "），請完成必要學習活動後再確認。";
+        cur.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(cur);
+        renderEngine(container, lv.levelId);
+        return;
+      }
+
+      cur.lastFeedback = "正在同步學習紀錄與精熟程度…";
+      cur.lastFeedbackType = "guide";
       Repo.saveAndSyncMastery(cur);
+      renderEngine(container, lv.levelId);
+
+      var syncModule = window.LearningStatsAndResourcesModule;
+      if (!syncModule || typeof syncModule.commitLearningSummary !== "function") {
+        cur.lastFeedback = "本機學習狀態已更新，但伺服器同步模組尚未載入；請重新整理後再試。";
+        cur.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(cur);
+        renderEngine(container, lv.levelId);
+        return;
+      }
+
+      var result = await syncModule.commitLearningSummary({
+        levelId: lv.levelId,
+        chapterId: lv.chapterId,
+        stageId: "X-2",
+        markStageCompleted: true
+      });
+      if (result && result.ok) {
+        cur.lastFeedback = "已成功同步「" + lv.title + "」學習紀錄與精熟程度：" + ev.studentLabel + "。";
+        cur.lastFeedbackType = "ok";
+        Repo.saveAndSyncMastery(cur);
+        window.dispatchEvent(new CustomEvent("star-learning:summary-committed", {
+          detail: { levelId: lv.levelId, chapterId: lv.chapterId, stats: result.stats }
+        }));
+      } else {
+        cur.lastFeedback = "本機學習狀態已更新，但伺服器同步失敗：" + ((result && result.message) || "未知錯誤") + "。請稍後重試。";
+        cur.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(cur);
+      }
       renderEngine(container, lv.levelId);
     });
 
