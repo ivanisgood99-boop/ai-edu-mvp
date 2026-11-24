@@ -25,6 +25,13 @@ Supabase 專案已套用以下七筆 migration：
 - 瀏覽器不得直接 INSERT／UPDATE／DELETE 作答紀錄；學生透過受控 RPC 新增，並依既有 RLS 政策讀取自己的紀錄。
 - `learning_statistics` 對前端維持唯讀，正式更新由資料庫函式執行。
 
+### Migration 原始 SQL 已還原至 GitHub
+
+- 已從 Supabase 的 `supabase_migrations.schema_migrations.statements` 取回七筆已套用 migration 的原始 SQL。
+- 已建立對應的 `supabase/migrations/<version>_<name>.sql` 檔案，版本號與資料庫 migration history 完全一致。
+- 七個檔案逐一重新讀回 GitHub 比對，內容均與資料庫保存的原始 SQL 完全一致。
+- 這補上了先前資料庫已變更、但 GitHub 缺少 migration 原始檔的可重建性缺口。現有 Supabase 專案已有相同 migration 版本紀錄；新環境則可依序套用這些檔案。
+
 ## 2. 作答紀錄與答案驗證
 
 ### `record_learning_answer`
