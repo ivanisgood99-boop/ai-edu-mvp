@@ -339,6 +339,15 @@
       var b = await window.AuthSystemModule.loadStudentProfileAndResources(st.user);
       st.profile = b.profile;
       st.res = b.resources;
+      if (st.profile && (st.profile.role === "teacher" || st.profile.role === "admin")) {
+        st.loadingData = false;
+        if (window.RoleDashboardModule) {
+          window.RoleDashboardModule.render(target, st.profile.role);
+        } else {
+          renderAuth(target);
+        }
+        return;
+      }
       if (window.LearningStatsAndResourcesModule) {
         var synced = await window.LearningStatsAndResourcesModule.syncResourcesAndRockets();
         if (synced) st.res = synced;
