@@ -1251,7 +1251,8 @@
           markStageCompleted: true
         });
         if (result && result.ok) {
-          cur.lastFeedback = "已成功同步「" + lv.title + "」學習紀錄與精熟程度：" + ev.studentLabel + "。";
+          cur.lastFeedback = "已成功儲存「" + lv.title + "」學習紀錄與精熟程度：" + ev.studentLabel + "。" +
+            (result.statsWarning ? " " + result.statsWarning : "");
           cur.lastFeedbackType = "ok";
           Repo.saveAndSyncMastery(cur);
           window.dispatchEvent(new CustomEvent("star-learning:summary-committed", {
