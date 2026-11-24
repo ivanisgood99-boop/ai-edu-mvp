@@ -146,13 +146,13 @@
         var own=ownedChars.find(function(x){return x.character_id===c.id;});
         return '<div class="sh-card" style="margin:8px 0"><strong>'+esc(c.name)+'</strong><p>星塵價格：'+c.stardust_cost+'</p>' +
           (own ? (own.is_equipped ? '目前使用中' : button('使用角色','data-equip-character="'+esc(c.id)+'"')) :
-          button('兌換角色','data-buy-character="'+esc(c.id)+''))+'</div>';
+          button('兌換角色','data-buy-character="'+esc(c.id)+'"')+'</div>';
       }).join("");
       var skinRows=skins.map(function(s){
         var own=ownedSkins.find(function(x){return x.skin_id===s.id;});
         return '<div class="sh-card" style="margin:8px 0"><strong>'+esc(s.name)+'</strong><p>寶石價格：'+s.gem_cost+'</p>' +
           (own ? (own.is_equipped ? '目前使用中' : button('套用造型','data-equip-skin="'+esc(s.id)+'"')) :
-          button('兌換造型','data-buy-skin="'+esc(s.id)+''))+'</div>';
+          button('兌換造型','data-buy-skin="'+esc(s.id)+'"')+'</div>';
       }).join("");
       var ach=(results[5].data||[]).map(function(a){
         var got=(results[6].data||[]).find(function(x){return x.achievement_id===a.id&&x.is_unlocked;});
@@ -172,7 +172,8 @@
         '<h3>成就</h3>'+(ach||'<p class="sh-card">成就條件尚未設定。</p>')+
         '<h3>PK 紀錄</h3><ul>'+(pk||'<li>尚無對戰紀錄；對戰規則尚未上線。</li>')+'</ul>'+
         '<h3>星際抽獎紀錄</h3><ul>'+(draws||'<li>尚無抽獎紀錄；抽獎成本與機率規則尚待設定。</li>')+'</ul>'+
-        '<h3>加入班級</h3><form id="rdJoinClass">'+field("8 位班級邀請碼","rdInviteCode","輸入教師提供的代碼")+'<button class="sh-btn primary" type="submit">加入班級</button></form>');
+        '<h3>加入班級</h3><form id="rdJoinClass">'+field("8 位班級邀請碼","rdInviteCode","輸入教師提供的代碼")+'<button class="sh-btn primary" type="submit">加入班級</button></form>'+
+        '<h3>申請成為教師</h3><form id="rdTeacherApply">'+field("任教科目","rdSubject","例如：高中數學")+'<button class="sh-btn" type="submit">送出教師申請</button></form>');
     } catch(e){showError(target,"星際收藏與資源中心",e);}
   }
 
