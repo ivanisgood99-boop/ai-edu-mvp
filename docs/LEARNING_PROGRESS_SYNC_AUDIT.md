@@ -49,3 +49,40 @@
 ## 5. 變更界線
 
 本次檢查沒有修改 Supabase 資料表、RLS、函式或正式資料。以上資料庫修正需要先審查並核准遷移內容；在核准前，不應直接寫入正式資料庫。  
+
+
+## 6. 已執行的資料庫變更（2026-11-24）
+
+已在 Supabase 專案套用兩個 migration：
+
+- `20261124124026_learning_answer_persistence_and_progress_v1`
+- `20261124124114_secure_learning_answer_rpc_writes`
+
+變更內容：
+- 建立 `private.learning_level_requirements`，目前登錄 10 個 Level 的 guide、check、practice 題目 ID。
+- `learning_answer_logs` 新增 `question_type`、`attempt_no`、`is_first_attempt`。
+- 新增 `record_learning_answer` RPC：以 `auth.uid()` 綁定學生身分、限制題目 ID、由資料庫計算嘗試次數，並觸發統計重算。
+- 撤銷瀏覽器直接 INSERT／UPDATE／DELETE 作答紀錄的權限；登入學生保留 SELECT，新增作答需透過 RPC。
+- `save_summary_and_recompute_level` 改為從伺服器作答證據計算 X-1、X-2 與星級，不再信任前端的完成旗標。
+- 兩個 RPC 都撤銷 PUBLIC／anon EXECUTE，只授權 authenticated。
+
+## 7. 已完成的程式串接
+
+- `teaching-engine.js`：每次作答仍先保存本機狀態，再依 Level 排隊呼叫 `record_learning_answer`；使用 Supabase Auth 目前登入者，不使用學生名稱當資料庫身分。
+- `teaching-engine.js`：提供 `flushLearningSync(levelId)`，讓總結前等待該 Level 的作答同步完成。
+- `learning-stats-and-resources.js`：總結重算前先 flush 作答佇列；只要有作答同步失敗，就不宣告正式精熟度更新成功。
+
+## 8. 驗證結果與尚未完成事項
+
+- Supabase migration 清單已顯示上述兩筆 migration。
+- 資料表欄位、題目需求設定數（10 個 Level）、RPC 權限已回讀確認。
+- 使用既有 profile 做過一次**交易內回滾**的 RPC 整合探測：函式成功回傳後將測試交易回滾；查詢確認沒有留下測試作答資料。
+- 正式作答資料目前仍為 0 筆；尚未用真實學生登入瀏覽器完成端到端測試。
+- **重要：精熟判定的 `p_is_correct` 仍由前端傳入。** 題目 ID 已白名單化，但若學生刻意改寫瀏覽器請求，仍可能偽造判定結果。下一階段必須把客觀題答案驗證移至伺服器，語意引導題則需由可信任的伺服器端 AI 評分流程回傳結果，才能把精熟度當成防篡改紀錄。
+- Supabase Security Advisor 另回報 `private.learning_level_requirements` 的 RLS 尚未啟用（CRITICAL）。目前已撤銷該表對 PUBLIC／anon／authenticated 的表權限，且其所在 schema 為 private；但仍應啟用 RLS 作縱深防禦。依安全檢查要求，尚未自行套用，需先確認是否採用下列設定：
+  ```sql
+  ALTER TABLE private.learning_level_requirements ENABLE ROW LEVEL SECURITY;
+  ```
+  該表只供 postgres 擁有的受控 SECURITY DEFINER RPC 讀取；若不建立一般使用者政策，authenticated／anon 將無法直接讀取，這是預期行為。
+- Advisor 仍會對「authenticated 可執行 SECURITY DEFINER」發出通用警告；目前兩個 RPC 都有 `auth.uid()` 檢查、固定 search_path、題目／Level 白名單與身分綁定。其餘既有 SECURITY DEFINER 函式的警告並非本次變更範圍。
+- 尚未合併 main、未部署 GitHub Pages。
