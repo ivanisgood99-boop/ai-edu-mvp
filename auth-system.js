@@ -67,6 +67,10 @@
       throw new Error("此帳號目前未啟用，請聯絡管理員。");
     }
 
+    if (pr.data.role !== "student") {
+      return { profile: pr.data, resources: null };
+    }
+
     var rr = await sb.from("student_resources")
       .select("*")
       .eq("student_id", user.id)
@@ -82,7 +86,21 @@
     var sub = sb.auth.onAuthStateChange(function (ev, sess) { cb(ev, sess); });
     return function () { if (sub && sub.data && sub.data.subscription) sub.data.subscription.unsubscribe(); };
   }
+  async function getCurrentProfile() {
+    var s = await getCurrentSession();
+    if (!s.user) return null;
+    var sb = client();
+    var r = await sb.from("profiles")
+      .select("id,display_name,role,account_status")
+      .eq("id", s.user.id)
+      .maybeSingle();
+    if (r.error) throw new Error("讀取帳號角色失敗：" + r.error.message);
+    return r.data || null;
+  }
+
   window.AuthSystemModule = {
+    getClient: client,
+    getCurrentProfile: getCurrentProfile,
     getCurrentSession: getCurrentSession,
     signUpStudent: signUpStudent,
     signInStudent: signInStudent,
