@@ -216,7 +216,7 @@
     try{
       var db=client(),r;
       if(app){r=await db.rpc("review_teacher_application",{p_application_id:Number(app.dataset.appId),p_decision:app.dataset.decision});if(r.error)throw r.error;await render(state.target,"admin");}
-      else if(account){r=await db.from("profiles").update({account_status:account.dataset.nextStatus}).eq("id",account.dataset.accountId);if(r.error)throw r.error;await render(state.target,"admin");}
+      else if(account){r=await db.rpc("admin_set_account_status",{p_target_user:account.dataset.accountId,p_status:account.dataset.nextStatus});if(r.error)throw r.error;await render(state.target,"admin");}
       else if(buyChar){r=await db.rpc("purchase_character",{p_character_id:buyChar.dataset.buyCharacter});if(r.error)throw r.error;await render(state.target,"rewards");}
       else if(buySkin){r=await db.rpc("purchase_skin",{p_skin_id:buySkin.dataset.buySkin});if(r.error)throw r.error;await render(state.target,"rewards");}
       else if(equipChar){r=await db.rpc("equip_character",{p_character_id:equipChar.dataset.equipCharacter});if(r.error)throw r.error;await render(state.target,"rewards");}
