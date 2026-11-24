@@ -28,3 +28,4 @@ jobs:
           node --check learning-stats-and-resources.js
           node --check student-home.js
           node --check teaching-engine.js
+          node --check role-dashboards.js
