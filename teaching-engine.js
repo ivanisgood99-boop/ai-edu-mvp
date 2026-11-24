@@ -1243,21 +1243,27 @@
         return;
       }
 
-      var result = await syncModule.commitLearningSummary({
-        levelId: lv.levelId,
-        chapterId: lv.chapterId,
-        stageId: "X-2",
-        markStageCompleted: true
-      });
-      if (result && result.ok) {
-        cur.lastFeedback = "已成功同步「" + lv.title + "」學習紀錄與精熟程度：" + ev.studentLabel + "。";
-        cur.lastFeedbackType = "ok";
-        Repo.saveAndSyncMastery(cur);
-        window.dispatchEvent(new CustomEvent("star-learning:summary-committed", {
-          detail: { levelId: lv.levelId, chapterId: lv.chapterId, stats: result.stats }
-        }));
-      } else {
-        cur.lastFeedback = "本機學習狀態已更新，但伺服器同步失敗：" + ((result && result.message) || "未知錯誤") + "。請稍後重試。";
+      try {
+        var result = await syncModule.commitLearningSummary({
+          levelId: lv.levelId,
+          chapterId: lv.chapterId,
+          stageId: "X-2",
+          markStageCompleted: true
+        });
+        if (result && result.ok) {
+          cur.lastFeedback = "已成功同步「" + lv.title + "」學習紀錄與精熟程度：" + ev.studentLabel + "。";
+          cur.lastFeedbackType = "ok";
+          Repo.saveAndSyncMastery(cur);
+          window.dispatchEvent(new CustomEvent("star-learning:summary-committed", {
+            detail: { levelId: lv.levelId, chapterId: lv.chapterId, stats: result.stats }
+          }));
+        } else {
+          cur.lastFeedback = "本機學習狀態已更新，但伺服器同步失敗：" + ((result && result.message) || "未知錯誤") + "。請稍後重試。";
+          cur.lastFeedbackType = "guide";
+          Repo.saveAndSyncMastery(cur);
+        }
+      } catch (syncError) {
+        cur.lastFeedback = "本機學習狀態已更新，但伺服器同步時發生連線錯誤：" + (syncError && syncError.message ? syncError.message : "請稍後重試") + "。";
         cur.lastFeedbackType = "guide";
         Repo.saveAndSyncMastery(cur);
       }
