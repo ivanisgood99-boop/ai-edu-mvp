@@ -80,7 +80,7 @@
         if (!stage) return;
 
         if (currentNav === "studentHome" || currentNav === "learningMap") {
-          stage.innerHTML = "<div id=\\"shStudentStage\\"></div>";
+          stage.innerHTML = "<div id=\"shStudentStage\"></div>";
           if (window.StudentHomeModule && typeof window.StudentHomeModule.render === "function") {
             window.StudentHomeModule.render(document.getElementById("shStudentStage"), {
               subView: currentNav === "learningMap" ? "map" : "home"
@@ -93,7 +93,7 @@
           if (window.RoleDashboardModule && typeof window.RoleDashboardModule.render === "function") {
             window.RoleDashboardModule.render(stage, currentNav);
           } else {
-            stage.innerHTML = "<div class=\\"sh-panel\\">功能模組尚未載入，請重新整理。</div>";
+            stage.innerHTML = "<div class=\"sh-panel\">功能模組尚未載入，請重新整理。</div>";
           }
           return;
         }
