@@ -55,6 +55,12 @@ BEGIN
     END LOOP;
     EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM PUBLIC, anon, authenticated',t);
   END LOOP;
+  FOREACH t IN ARRAY ARRAY['answer_logs','student_progress','audit_logs','teacher_applications'] LOOP
+    IF pg_get_serial_sequence('public.'||t,'id') IS NOT NULL THEN
+      EXECUTE format('REVOKE ALL ON SEQUENCE %s FROM PUBLIC, anon, authenticated',
+        pg_get_serial_sequence('public.'||t,'id'));
+    END IF;
+  END LOOP;
   FOR p IN SELECT policyname FROM pg_policies
     WHERE schemaname='public' AND tablename='teacher_applications'
   LOOP
