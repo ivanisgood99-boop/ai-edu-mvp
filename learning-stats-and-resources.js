@@ -1,35 +1,97 @@
 (function () {
   "use strict";
+
   function sb() {
     if (window.sbClient) return window.sbClient;
+    if (window.AuthSystemModule && typeof window.AuthSystemModule.getSupabaseClient === "function") {
+      return window.AuthSystemModule.getSupabaseClient();
+    }
     if (window.supabase && window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
-      window.sbClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+      window.sbClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      });
       return window.sbClient;
     }
     return null;
   }
+
+  function starToLabel(rating) {
+    if (rating === "THREE_STARS") return "★★★ 精熟";
+    if (rating === "TWO_STARS") return "★★☆ 穩定進步";
+    if (rating === "ONE_STAR") return "★☆☆ 需要加強";
+    return "尚未評定";
+  }
+
+  async function fetchStudentStatistics(studentId) {
+    var c = sb();
+    if (!c || !studentId) return [];
+    var r = await c
+      .from("learning_statistics")
+      .select("*")
+      .eq("student_id", studentId)
+      .order("level_id", { ascending: true });
+    if (r && r.error) {
+      throw new Error("讀取學習統計失敗：" + r.error.message);
+    }
+    return (r && Array.isArray(r.data)) ? r.data : [];
+  }
+
+  async function commitLearningSummary(opts) {
+    var c = sb();
+    if (!c) {
+      return { ok: false, message: "尚未建立 Supabase 連線，無法儲存學習紀錄。" };
+    }
+    var levelId = opts && opts.levelId ? String(opts.levelId) : "";
+    if (!levelId) {
+      return { ok: false, message: "缺少 level_id，無法更新精熟程度。" };
+    }
+
+    var rpcRes = await c.rpc("save_summary_and_recompute_level", {
+      p_level_id: levelId,
+      p_chapter_id: (opts && opts.chapterId) || null,
+      p_stage_id: (opts && opts.stageId) || "X-2",
+      p_mark_stage_completed: opts && typeof opts.markStageCompleted === "boolean" ? opts.markStageCompleted : true
+    });
+
+    if (rpcRes && rpcRes.error) {
+      return { ok: false, message: "儲存失敗：" + rpcRes.error.message };
+    }
+
+    var uid = opts && opts.studentId ? opts.studentId : null;
+    if (!uid && window.AuthSystemModule && typeof window.AuthSystemModule.getCurrentSession === "function") {
+      var s = await window.AuthSystemModule.getCurrentSession();
+      uid = s && s.user ? s.user.id : null;
+    }
+
+    var freshStats = uid ? await fetchStudentStatistics(uid) : [];
+    return {
+      ok: true,
+      message: "已成功更新學習紀錄與精熟程度。",
+      updatedRow: rpcRes ? rpcRes.data : null,
+      stats: freshStats
+    };
+  }
+
   async function syncResourcesAndRockets() {
     var c = sb();
     if (!c) return null;
     var r = await c.rpc("sync_student_stamina_and_rockets", { p_tz: "Asia/Taipei" });
-    return r && !r.error ? r.data : null;
+    return (r && !r.error) ? r.data : null;
   }
+
   async function consumeRocketSupply() {
     var c = sb();
-    if (!c) return { ok: false, message: "尚未連線" };
+    if (!c) return { ok: false, message: "尚未連線 Supabase" };
     var r = await c.rpc("use_rocket_supply");
-    if (r.error) return { ok: false, message: r.error.message };
-    return { ok: true, resources: r.data };
+    if (r && r.error) return { ok: false, message: r.error.message };
+    return { ok: true, resources: r ? r.data : null };
   }
-  async function fetchStudentStatistics(uid) {
-    var c = sb();
-    if (!c || !uid) return [];
-    var r = await c.from("learning_statistics").select("*").eq("student_id", uid);
-    return (r && r.data) || [];
-  }
+
   window.LearningStatsAndResourcesModule = {
+    starToLabel: starToLabel,
+    fetchStudentStatistics: fetchStudentStatistics,
+    commitLearningSummary: commitLearningSummary,
     syncResourcesAndRockets: syncResourcesAndRockets,
-    consumeRocketSupply: consumeRocketSupply,
-    fetchStudentStatistics: fetchStudentStatistics
+    consumeRocketSupply: consumeRocketSupply
   };
 })();
