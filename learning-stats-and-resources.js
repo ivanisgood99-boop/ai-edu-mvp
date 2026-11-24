@@ -57,18 +57,28 @@
       return { ok: false, message: "儲存失敗：" + rpcRes.error.message };
     }
 
+    // RPC 已成功代表資料庫寫入完成；後續讀取統計失敗不可被誤報為寫入失敗。
     var uid = opts && opts.studentId ? opts.studentId : null;
-    if (!uid && window.AuthSystemModule && typeof window.AuthSystemModule.getCurrentSession === "function") {
-      var s = await window.AuthSystemModule.getCurrentSession();
-      uid = s && s.user ? s.user.id : null;
+    var statsWarning = null;
+    var freshStats = [];
+    try {
+      if (!uid && window.AuthSystemModule && typeof window.AuthSystemModule.getCurrentSession === "function") {
+        var s = await window.AuthSystemModule.getCurrentSession();
+        uid = s && s.user ? s.user.id : null;
+      }
+      if (uid) freshStats = await fetchStudentStatistics(uid);
+      else statsWarning = "紀錄已寫入，但目前無法取得登入者資料以重新讀取星級。";
+    } catch (refreshError) {
+      statsWarning = "紀錄已寫入；但重新讀取星級失敗：" +
+        (refreshError && refreshError.message ? refreshError.message : "請重新整理頁面。");
     }
 
-    var freshStats = uid ? await fetchStudentStatistics(uid) : [];
     return {
       ok: true,
       message: "已成功更新學習紀錄與精熟程度。",
       updatedRow: rpcRes ? rpcRes.data : null,
-      stats: freshStats
+      stats: freshStats,
+      statsWarning: statsWarning
     };
   }
 
