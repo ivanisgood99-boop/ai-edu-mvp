@@ -750,14 +750,20 @@
 
     list.forEach(function (it) {
       var qid = it.questionId || "Q";
-      if (!seen[qid]) {
-        seen[qid] = true;
+      var type = it.stageType || (it.isRemedial ? "remedial" : "practice");
+      if (type === "guide") return;
+
+      var conceptKey = type === "remedial" ? (it.errorCode || "") : (it.subConcept || "");
+      var evidenceKey = type + "::" + qid + "::" + conceptKey;
+      if (!seen[evidenceKey]) {
+        seen[evidenceKey] = true;
         fTotal += 1;
         if (it.isCorrect) fOk += 1;
+        if (it.hintLevel === "H3" || it.hintLevel === "H4") highHint += 1;
       }
-      if (it.stageType === "check") hasCheck = true;
-      if (it.stageType === "practice" || it.isRemedial) hasPractice = true;
-      if (it.hintLevel === "H3" || it.hintLevel === "H4") highHint += 1;
+
+      if (type === "check" && it.isCorrect) hasCheck = true;
+      if ((type === "practice" || type === "remedial") && it.isCorrect) hasPractice = true;
     });
 
     var missing = [];
