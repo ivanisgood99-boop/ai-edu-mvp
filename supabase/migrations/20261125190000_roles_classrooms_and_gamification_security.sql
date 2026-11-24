@@ -356,3 +356,24 @@ CREATE POLICY profiles_teacher_read_students ON public.profiles
         AND public.is_active_teacher()
     )
   );
+
+
+CREATE OR REPLACE FUNCTION public.admin_set_account_status(p_target_user uuid,p_status text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+DECLARE v_uid uuid:=auth.uid();
+BEGIN
+  IF v_uid IS NULL OR NOT public.is_platform_admin() THEN RAISE EXCEPTION 'Forbidden'; END IF;
+  IF p_target_user IS NULL OR p_target_user=v_uid THEN RAISE EXCEPTION 'Cannot change own account status'; END IF;
+  IF p_status NOT IN ('active','suspended','deactivated') THEN RAISE EXCEPTION 'Invalid account status'; END IF;
+  UPDATE public.profiles SET account_status=p_status WHERE id=p_target_user;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Profile not found'; END IF;
+  INSERT INTO public.platform_audit_logs(actor_id,action,target_table,target_id,details)
+    VALUES(v_uid,'account_status_changed','profiles',p_target_user::text,
+      jsonb_build_object('account_status',p_status));
+  RETURN jsonb_build_object('user_id',p_target_user,'account_status',p_status);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.admin_set_account_status(uuid,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.admin_set_account_status(uuid,text) TO authenticated;
