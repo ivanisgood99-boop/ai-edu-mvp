@@ -23,6 +23,75 @@
 
   var STORE_KEY = "ai_edu_phase2_records_v4";
   var MASTERY_SYNC_KEY = "ai_edu_level_mastery_v1";
+  var learningSyncQueues = {};
+
+  function queueLearningAnswer(levelId, log) {
+    var key = String(levelId || "");
+    if (!key) return Promise.resolve({ ok: false, message: "缺少 Level ID" });
+    if (!learningSyncQueues[key]) learningSyncQueues[key] = { tail: Promise.resolve(), errors: [] };
+    var queue = learningSyncQueues[key];
+
+    var next = queue.tail.catch(function () {}).then(async function () {
+      try {
+        if (!window.AuthSystemModule || typeof window.AuthSystemModule.getCurrentSession !== "function") {
+          return { ok: true, skipped: true, message: "目前沒有登入模組，僅保留本機紀錄。" };
+        }
+        var auth = await window.AuthSystemModule.getCurrentSession();
+        if (!auth || !auth.user || !auth.user.id) {
+          return { ok: true, skipped: true, message: "訪客模式僅保留本機紀錄。" };
+        }
+        var client = window.sbClient;
+        if (!client && window.supabase && window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+          client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+            auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+          });
+          window.sbClient = client;
+        }
+        if (!client) throw new Error("Supabase 用戶端尚未初始化");
+
+        var type = log.stageType || (log.isRemedial ? "remedial" : "practice");
+        var hint = /^H[1-4]$/.test(String(log.hintLevel || "")) ? Number(String(log.hintLevel).slice(1)) : 0;
+        var response = await client.rpc("record_learning_answer", {
+          p_chapter_id: log.chapterId || null,
+          p_level_id: key,
+          p_question_type: type,
+          p_question_id: log.questionId,
+          p_raw_answer: String(log.studentAnswer == null ? "" : log.studentAnswer),
+          p_is_correct: Boolean(log.isCorrect),
+          p_concept_id: log.subConcept || null,
+          p_sub_step: null,
+          p_hint_count: hint,
+          p_ai_reason: log.errorCode || log.verdict || null
+        });
+        if (response && response.error) throw new Error(response.error.message || "作答紀錄同步失敗");
+        window.dispatchEvent(new CustomEvent("star-learning:answer-synced", {
+          detail: { levelId: key, questionId: log.questionId, result: response ? response.data : null }
+        }));
+        return { ok: true, data: response ? response.data : null };
+      } catch (error) {
+        var message = error && error.message ? error.message : "未知同步錯誤";
+        queue.errors.push(message);
+        window.dispatchEvent(new CustomEvent("star-learning:sync-error", {
+          detail: { levelId: key, questionId: log.questionId, message: message }
+        }));
+        return { ok: false, message: message };
+      }
+    });
+    queue.tail = next;
+    return next;
+  }
+
+  async function flushLearningSync(levelId) {
+    var queue = learningSyncQueues[String(levelId || "")];
+    if (!queue) return { ok: true };
+    await queue.tail;
+    if (queue.errors.length) {
+      var message = Array.from(new Set(queue.errors)).join("；");
+      return { ok: false, message: message };
+    }
+    return { ok: true };
+  }
+
 
   function esc(x) {
     return String(x || "")
@@ -630,6 +699,7 @@
         s.remedialPassed = true;
       }
       this.saveAndSyncMastery(s);
+      queueLearningAnswer(levelId, lg);
       return this.getSession(sid, levelId);
     }
   };
@@ -1298,6 +1368,7 @@
     getChapterCompletion: getChapterCompletion,
     getStrictStageAccess: getStrictStageAccess,
     isStageFormallyCompleted: isStageFormallyCompleted,
+    flushLearningSync: flushLearningSync,
     formatMathForStudent: formatMathForStudent,
     getStudentTitle: function (id) {
       var lv = LEVELS.find(function (x) { return x.levelId === id || x.legacyNodeId === id; });
