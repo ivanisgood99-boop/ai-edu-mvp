@@ -235,3 +235,96 @@ GRANT SELECT ON TABLE public.student_achievements,public.student_characters,
 
 REVOKE ALL ON TABLE public.student_resources,public.resource_transactions FROM PUBLIC,anon,authenticated;
 GRANT SELECT ON TABLE public.student_resources,public.resource_transactions TO authenticated;
+
+
+-- Administrators may manage other profiles; the trigger still prevents self-role changes.
+DROP POLICY IF EXISTS profiles_admin_update ON public.profiles;
+CREATE POLICY profiles_admin_update ON public.profiles
+  FOR UPDATE TO authenticated
+  USING (public.is_platform_admin() AND id <> auth.uid())
+  WITH CHECK (public.is_platform_admin() AND id <> auth.uid());
+
+-- Purchase and equip operations are atomic server-side transactions.
+CREATE OR REPLACE FUNCTION public.purchase_character(p_character_id text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+DECLARE v_uid uuid:=auth.uid(); v_cost integer; v_balance integer;
+BEGIN
+  IF v_uid IS NULL OR NOT EXISTS (SELECT 1 FROM public.profiles
+    WHERE id=v_uid AND role='student' AND account_status='active') THEN RAISE EXCEPTION 'Forbidden'; END IF;
+  SELECT stardust_cost INTO v_cost FROM public.characters_catalog WHERE id=p_character_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Character not found'; END IF;
+  IF EXISTS (SELECT 1 FROM public.student_characters WHERE student_id=v_uid AND character_id=p_character_id) THEN
+    RAISE EXCEPTION 'Character already owned';
+  END IF;
+  SELECT stardust INTO v_balance FROM public.student_resources WHERE student_id=v_uid FOR UPDATE;
+  IF NOT FOUND OR v_balance < v_cost THEN RAISE EXCEPTION 'Not enough stardust'; END IF;
+  UPDATE public.student_resources SET stardust=stardust-v_cost,updated_at=now() WHERE student_id=v_uid;
+  INSERT INTO public.student_characters(student_id,character_id) VALUES(v_uid,p_character_id);
+  INSERT INTO public.resource_transactions(student_id,resource_type,delta,action_code,reference_id)
+    VALUES(v_uid,'stardust',-v_cost,'PURCHASE_CHARACTER',p_character_id);
+  RETURN jsonb_build_object('character_id',p_character_id,'stardust_spent',v_cost);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.purchase_character(text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.purchase_character(text) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.purchase_skin(p_skin_id text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+DECLARE v_uid uuid:=auth.uid(); v_cost integer; v_balance integer;
+BEGIN
+  IF v_uid IS NULL OR NOT EXISTS (SELECT 1 FROM public.profiles
+    WHERE id=v_uid AND role='student' AND account_status='active') THEN RAISE EXCEPTION 'Forbidden'; END IF;
+  SELECT gem_cost INTO v_cost FROM public.skins_catalog WHERE id=p_skin_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Skin not found'; END IF;
+  IF EXISTS (SELECT 1 FROM public.student_skins WHERE student_id=v_uid AND skin_id=p_skin_id) THEN
+    RAISE EXCEPTION 'Skin already owned';
+  END IF;
+  SELECT gems INTO v_balance FROM public.student_resources WHERE student_id=v_uid FOR UPDATE;
+  IF NOT FOUND OR v_balance < v_cost THEN RAISE EXCEPTION 'Not enough gems'; END IF;
+  UPDATE public.student_resources SET gems=gems-v_cost,updated_at=now() WHERE student_id=v_uid;
+  INSERT INTO public.student_skins(student_id,skin_id) VALUES(v_uid,p_skin_id);
+  INSERT INTO public.resource_transactions(student_id,resource_type,delta,action_code,reference_id)
+    VALUES(v_uid,'gems',-v_cost,'PURCHASE_SKIN',p_skin_id);
+  RETURN jsonb_build_object('skin_id',p_skin_id,'gems_spent',v_cost);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.purchase_skin(text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.purchase_skin(text) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.equip_character(p_character_id text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+DECLARE v_uid uuid:=auth.uid();
+BEGIN
+  IF v_uid IS NULL OR NOT EXISTS (SELECT 1 FROM public.profiles
+    WHERE id=v_uid AND role='student' AND account_status='active') THEN RAISE EXCEPTION 'Forbidden'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.student_characters
+    WHERE student_id=v_uid AND character_id=p_character_id) THEN RAISE EXCEPTION 'Character not owned'; END IF;
+  UPDATE public.student_characters SET is_equipped=(character_id=p_character_id) WHERE student_id=v_uid;
+  RETURN jsonb_build_object('equipped_character_id',p_character_id);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.equip_character(text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.equip_character(text) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.equip_skin(p_skin_id text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+DECLARE v_uid uuid:=auth.uid();
+BEGIN
+  IF v_uid IS NULL OR NOT EXISTS (SELECT 1 FROM public.profiles
+    WHERE id=v_uid AND role='student' AND account_status='active') THEN RAISE EXCEPTION 'Forbidden'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.student_skins
+    WHERE student_id=v_uid AND skin_id=p_skin_id) THEN RAISE EXCEPTION 'Skin not owned'; END IF;
+  UPDATE public.student_skins SET is_equipped=(skin_id=p_skin_id) WHERE student_id=v_uid;
+  RETURN jsonb_build_object('equipped_skin_id',p_skin_id);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.equip_skin(text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.equip_skin(text) TO authenticated;
