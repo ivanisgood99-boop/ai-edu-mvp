@@ -45,11 +45,20 @@ REVOKE ALL ON FUNCTION public.guard_profile_update() FROM PUBLIC, anon;
 DO $legacy$
 DECLARE t text; p record;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['answer_logs','student_progress','audit_logs'] LOOP
+  FOREACH t IN ARRAY ARRAY[
+    'answer_logs','student_progress','audit_logs',
+    'backup_answer_logs_20261124','backup_student_progress_20261124'
+  ] LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY',t);
     FOR p IN SELECT policyname FROM pg_policies WHERE schemaname='public' AND tablename=t LOOP
       EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I',p.policyname,t);
     END LOOP;
     EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM PUBLIC, anon, authenticated',t);
+  END LOOP;
+  FOR p IN SELECT policyname FROM pg_policies
+    WHERE schemaname='public' AND tablename='teacher_applications'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.teacher_applications',p.policyname);
   END LOOP;
 END;
 $legacy$;
@@ -109,6 +118,7 @@ GRANT USAGE,SELECT ON SEQUENCE public.class_enrollments_id_seq TO authenticated;
 DROP POLICY IF EXISTS profiles_admin_select ON public.profiles;
 CREATE POLICY profiles_admin_select ON public.profiles FOR SELECT TO authenticated
   USING (public.is_platform_admin());
+REVOKE ALL ON TABLE public.profiles FROM PUBLIC,anon,authenticated;
 GRANT SELECT,INSERT,UPDATE ON TABLE public.profiles TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.submit_teacher_application(p_subject text DEFAULT '高中數學')
@@ -234,6 +244,8 @@ GRANT SELECT ON TABLE public.student_achievements,public.student_characters,
   public.student_skins,public.lottery_draws,public.pk_matches,public.platform_audit_logs TO authenticated;
 
 REVOKE ALL ON TABLE public.student_resources,public.resource_transactions FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON TABLE public.curriculum_modules FROM PUBLIC,anon,authenticated;
+GRANT SELECT ON TABLE public.curriculum_modules TO anon,authenticated;
 GRANT SELECT ON TABLE public.student_resources,public.resource_transactions TO authenticated;
 
 
