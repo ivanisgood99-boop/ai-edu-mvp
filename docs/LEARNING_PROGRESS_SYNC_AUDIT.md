@@ -13,6 +13,8 @@ Supabase 專案已套用以下五筆 migration：
 3. `20261124124358_enable_rls_on_private_learning_requirements`
 4. `20261124124744_server_side_answer_key_validation_v1`
 5. `20261124125109_align_first_attempt_mastery_calculation`
+6. `20261124125346_normalize_numeric_answers_and_configure_star_minimum`
+7. `20261124125410_use_configured_mastery_threshold_and_preserve_star`
 
 ### 資料表與權限
 
@@ -31,6 +33,7 @@ Supabase 專案已套用以下五筆 migration：
 - 驗證 Level、章節、題型及 question ID。
 - check、practice、remedial 題由 private 答案表比對原始答案；前端傳入的 `p_is_correct` 不作為客觀題判分依據。
 - remedial 題另以錯誤類型（E01–E07）定位對應答案。
+- 整數答案正規化會移除空白與前置正號，與前端整數驗證行為一致。
 - 資料庫在交易中計算 attempt_no 與 is_first_attempt，避免前端偽造首次作答標記。
 - guide 題只記錄「已提交」；目前語意回饋仍由前端 SemanticHook 提供，不能把它視為伺服器端 AI 評分。X-1 正式完成條件是 guide 已提交且該 Level 所有 check 題均由伺服器驗證正確。
 
@@ -40,6 +43,7 @@ Supabase 專案已套用以下五筆 migration：
 - X-2：X-1 已完成，且至少一題白名單 practice 題或 remedial 題由伺服器判定正確。
 - 星級以不同題目／題型／補救錯誤類型的首次作答計算，重試不重複增加題數。
 - 前端與資料庫已對齊首次作答、正確理解檢查、正確練習、提示依賴及星級保留邏輯。
+- 星級題數門檻使用 Level 設定中的 `min_star_questions`，不再寫死為 2。
 - 保留原有星級的單調保護：正確率仍達 50% 時，不因單次新增錯題而降低既有星級。
 
 ## 3. 前端串接
@@ -66,7 +70,7 @@ Supabase 專案已套用以下五筆 migration：
 
 ### 資料庫狀態
 
-- Migration 清單已回讀確認五筆遷移。
+- Migration 清單已回讀確認七筆遷移。
 - private 答案鍵數量：check 18、practice 20、remedial 140。
 - `private.learning_level_requirements` 與 `private.learning_answer_keys` 均已啟用 RLS。
 - anon 無法呼叫 `record_learning_answer`；authenticated 可以呼叫。
@@ -83,8 +87,9 @@ Supabase 專案已套用以下五筆 migration：
 4. guide 提交與全部 check 正確後，X-1 正式完成。
 5. X-1 完成後，正確 practice 可完成 X-2。
 6. remedial 答案依錯誤類型及伺服器答案鍵驗證。
+7. 帶前置正號的整數答案（例如 `+10`）可依前端規則正確判定。
 
-測試呼叫未拋出例外，回滾後 `ai_reason='rollback-probe-v2'` 的作答紀錄為 0 筆。
+最新測試呼叫未拋出例外，回滾後 `ai_reason='rollback-probe-final'` 的作答紀錄為 0 筆。
 
 ## 5. 尚未完成的驗收與風險
 
