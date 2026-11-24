@@ -1,326 +1,323 @@
-/* 星際探索視覺與響應式樣式（手機版防橫向溢出） */
+/* 星航智學：四頁導覽狀態、多層宇宙背景、彎曲航線地圖與響應式 */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 html, body {
   max-width: 100%;
   overflow-x: hidden;
-}
-
-.space-home-root {
-  position: relative;
-  min-height: 75vh;
-  border-radius: 16px;
-  overflow: hidden;
-  background: radial-gradient(circle at 20% 15%, rgba(56, 189, 248, 0.22), transparent 45%),
-              radial-gradient(circle at 80% 30%, rgba(139, 92, 246, 0.24), transparent 50%),
-              linear-gradient(160deg, #050816 0%, #0b1229 55%, #111827 100%);
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+  background: #060a17;
   color: #f8fafc;
 }
 
-.nebula-layer {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 65% 75%, rgba(14, 165, 233, 0.16), transparent 45%);
-  pointer-events: none;
+.sh-shell {
+  min-height: 100vh;
+  padding: 12px;
 }
 
-.starfield-layer {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.55) 1px, transparent 0);
-  background-size: 36px 36px;
-  opacity: 0.35;
-  pointer-events: none;
+.sh-nav-card {
+  max-width: 1040px;
+  margin: 0 auto 12px auto;
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 14px;
+  padding: 12px 14px;
 }
 
-.space-content {
+.sh-nav-brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sh-nav-pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+  font-weight: 700;
+}
+
+.sh-nav-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (min-width: 640px) {
+  .sh-nav-bar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.sh-nav-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  background: #141c33;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.sh-nav-btn.is-active,
+.sh-nav-btn[aria-current="page"] {
+  background: #1d4ed8;
+  border-color: #60a5fa;
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(147, 197, 253, 0.45);
+}
+
+.sh-stage-main {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+/* 原創多層宇宙場景：遠景星點/星團、中景星雲/星塵、近景小行星/軌道 */
+.cosmos-scene {
   position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background:
+    radial-gradient(ellipse at 18% 20%, rgba(56, 189, 248, 0.22), transparent 48%),
+    radial-gradient(ellipse at 82% 24%, rgba(168, 85, 247, 0.24), transparent 52%),
+    radial-gradient(ellipse at 52% 85%, rgba(20, 184, 166, 0.16), transparent 50%),
+    linear-gradient(170deg, #040711 0%, #091024 55%, #0e1730 100%);
+}
+
+.cosmos-scene.galaxy-amber-nebula {
+  background:
+    radial-gradient(ellipse at 22% 18%, rgba(251, 191, 36, 0.2), transparent 46%),
+    radial-gradient(ellipse at 78% 35%, rgba(56, 189, 248, 0.2), transparent 50%),
+    linear-gradient(170deg, #060914 0%, #10172d 60%, #0b1326 100%);
+}
+
+.cosmos-scene.galaxy-cyan-nebula {
+  background:
+    radial-gradient(ellipse at 25% 22%, rgba(34, 211, 238, 0.22), transparent 48%),
+    radial-gradient(ellipse at 80% 70%, rgba(129, 140, 248, 0.2), transparent 50%),
+    linear-gradient(170deg, #040914 0%, #08182d 60%, #0c162b 100%);
+}
+
+.cosmos-scene.galaxy-violet-nebula {
+  background:
+    radial-gradient(ellipse at 24% 25%, rgba(192, 132, 252, 0.24), transparent 48%),
+    radial-gradient(ellipse at 76% 68%, rgba(45, 212, 191, 0.18), transparent 50%),
+    linear-gradient(170deg, #070614 0%, #15102d 60%, #0c1429 100%);
+}
+
+.cosmos-canvas-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.cosmos-mid-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1;
+  pointer-events: none;
+  opacity: 0.75;
 }
 
-.sh-container {
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 18px 14px;
-}
-
-.sh-auth-wrap {
-  max-width: 540px;
-  margin: 0 auto;
-  padding: 24px 14px;
+.cosmos-content {
+  position: relative;
+  z-index: 2;
+  padding: 16px 14px;
 }
 
 .sh-panel {
-  background: rgba(15, 23, 42, 0.88);
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(11, 18, 36, 0.86);
+  border: 1px solid rgba(148, 163, 184, 0.26);
   border-radius: 14px;
-  padding: 16px;
+  padding: 14px;
   margin-bottom: 14px;
-  backdrop-filter: blur(6px);
 }
 
-.sh-kicker {
-  font-size: 12px;
-  color: #38bdf8;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
-
-.sh-title {
-  margin: 4px 0;
-  font-size: clamp(20px, 4vw, 26px);
-  line-height: 1.25;
-  color: #f8fafc;
-  word-break: break-word;
-}
-
-.sh-subtitle, .sh-submeta {
-  font-size: 13px;
-  color: #cbd5e1;
-  word-break: break-word;
-}
-
-.sh-sec-title {
-  margin: 0 0 12px 0;
-  font-size: 16px;
-  color: #f1f5f9;
-}
-
-.sh-profile-bar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.sh-profile-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.sh-orbit-avatar {
-  width: 46px;
-  height: 46px;
-  border-radius: 999px;
+.sh-grid {
   display: grid;
-  place-items: center;
-  background: rgba(56, 189, 248, 0.18);
-  border: 1px solid rgba(125, 211, 252, 0.5);
-  font-size: 22px;
-  flex-shrink: 0;
-}
-
-.sh-top-actions, .sh-tab-row, .sh-planet-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.sh-mini-btn {
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(30, 41, 59, 0.85);
-  color: #f8fafc;
-  border-radius: 9px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.sh-mini-btn.primary {
-  background: linear-gradient(135deg, #0284c7, #2563eb);
-  border-color: transparent;
-  color: #ffffff;
-}
-
-.sh-mini-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.sh-badge {
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(14, 165, 233, 0.18);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  color: #bae6fd;
-}
-
-.sh-grid-4 {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 10px;
 }
 
-.sh-stat-card {
-  background: rgba(30, 41, 59, 0.78);
+.sh-card {
+  background: rgba(20, 30, 56, 0.88);
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 12px;
   padding: 12px;
 }
 
-.sh-stat-label {
+.sh-card-label {
   font-size: 12px;
   color: #94a3b8;
 }
 
-.sh-stat-val {
-  font-size: 18px;
-  font-weight: 700;
+.sh-card-num {
+  font-size: 20px;
+  font-weight: 800;
   color: #f8fafc;
   margin-top: 4px;
 }
 
-.sh-stat-note {
+.sh-card-sub {
   font-size: 12px;
   color: #cbd5e1;
   margin-top: 4px;
 }
 
-.sh-mode-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
-}
-
-.sh-mode-card {
-  text-align: left;
-  background: rgba(30, 41, 59, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  border-radius: 12px;
-  padding: 14px;
+.sh-btn {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(30, 41, 59, 0.9);
   color: #f8fafc;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.sh-mode-card.active {
-  border-color: #38bdf8;
-  background: rgba(14, 165, 233, 0.2);
-}
-
-.sh-mode-card span {
-  font-size: 12px;
-  color: #cbd5e1;
-}
-
-.sh-two-col {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
-}
-
-.sh-info-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 12px 0;
-  font-size: 13px;
-  color: #e2e8f0;
-}
-
-.sh-info-list li {
-  padding: 6px 0;
-  border-bottom: 1px dashed rgba(148, 163, 184, 0.2);
-}
-
-.sh-field-label {
-  display: block;
-  margin-bottom: 10px;
-  font-size: 13px;
-  color: #e2e8f0;
-}
-
-.sh-input {
-  width: 100%;
-  margin-top: 4px;
-  padding: 9px 11px;
-  border-radius: 8px;
-  border: 1px solid #475569;
-  background: #0f172a;
-  color: #f8fafc;
-}
-
-.sh-msg {
-  margin-top: 10px;
-  padding: 10px 12px;
   border-radius: 9px;
+  padding: 8px 12px;
   font-size: 13px;
-  word-break: break-word;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 6px;
+  margin-right: 6px;
 }
 
-.sh-msg.ok {
-  background: rgba(20, 184, 166, 0.18);
-  color: #5eead4;
-  border: 1px solid rgba(94, 234, 212, 0.35);
+.sh-btn.primary {
+  background: #1d4ed8;
+  border-color: #60a5fa;
+  color: #ffffff;
 }
 
-.sh-msg.err {
-  background: rgba(248, 113, 113, 0.18);
-  color: #fca5a5;
-  border: 1px solid rgba(252, 165, 165, 0.35);
+.sh-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
-.sh-galaxy-box {
-  background: rgba(15, 23, 42, 0.88);
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 14px;
-}
-
-.sh-galaxy-top {
+/* 彎曲探索路線與星球樣式 */
+.map-ch-tabs {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
-.sh-planet-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
-}
-
-.sh-planet-card {
-  background: rgba(30, 41, 59, 0.82);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  border-radius: 12px;
-  padding: 12px;
-}
-
-.sh-planet-card.locked {
-  opacity: 0.65;
-  border-color: rgba(148, 163, 184, 0.22);
-}
-
-.sh-planet-head {
+.map-winding-trail {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 14px;
+  padding: 8px 4px;
 }
 
-.sh-star-pill {
-  font-size: 11px;
-  padding: 3px 8px;
+.map-node-row {
+  display: flex;
+  justify-content: center;
+}
+
+.map-node-row.zig-left {
+  justify-content: flex-start;
+  padding-left: 6%;
+}
+
+.map-node-row.zig-right {
+  justify-content: flex-end;
+  padding-right: 6%;
+}
+
+@media (max-width: 600px) {
+  .map-node-row.zig-left,
+  .map-node-row.zig-right {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+.planet-node {
+  width: 100%;
+  max-width: 390px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(96, 165, 250, 0.42);
+  border-radius: 16px;
+  padding: 12px 14px;
+  position: relative;
+  box-shadow: 0 0 22px rgba(37, 99, 235, 0.16);
+}
+
+.planet-node.is-locked {
+  opacity: 0.62;
+  border-color: rgba(100, 116, 139, 0.35);
+  box-shadow: none;
+}
+
+.planet-node-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.planet-star-badge {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 9px;
   border-radius: 999px;
   background: rgba(250, 204, 21, 0.16);
   color: #fde047;
 }
 
-.sh-stage-status {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.planet-stage-list {
+  margin-top: 10px;
   font-size: 12px;
-  color: #cbd5e1;
-  margin-bottom: 10px;
+  color: #e2e8f0;
+  border-top: 1px dashed rgba(148, 163, 184, 0.25);
+  padding-top: 8px;
+}
+
+.final-megastar {
+  margin-top: 14px;
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.65), rgba(88, 28, 135, 0.55));
+  border: 2px solid rgba(192, 132, 252, 0.65);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 0 28px rgba(168, 85, 247, 0.25);
+}
+
+.sh-banner-ok {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  background: rgba(20, 184, 166, 0.18);
+  color: #5eead4;
+}
+
+.sh-banner-err {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  background: rgba(248, 113, 113, 0.18);
+  color: #fca5a5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cosmos-canvas-bg,
+  .cosmos-mid-svg,
+  .sh-nav-btn {
+    transition: none;
+  }
 }
