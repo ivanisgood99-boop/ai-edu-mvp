@@ -64,6 +64,7 @@
     return "尚未評定";
   }
 
+  // 同一 Level 內：觀念學習（X-1）可進入；練習應用（X-2）需觀念學習（X-1）已完成
   function canEnterStage(stat, stageCode) {
     if (stageCode === "X-2") {
       return Boolean(stat && stat.stage_x1_completed);
@@ -71,6 +72,7 @@
     return true;
   }
 
+  // 必要 Level 全部完成才解鎖 Chapter 最終評量（排除 isOptional === true 的選修 Level）
   function isChapterFinalUnlocked(ch) {
     var requiredLevels = (ch.levels || []).filter(function (lv) { return !lv.isOptional; });
     if (!requiredLevels.length) return false;
@@ -244,6 +246,9 @@
       var x2Done = Boolean(s && s.stage_x2_completed);
       var canX2 = canEnterStage(s, "X-2");
       var starLabel = formatStar(s);
+      var prereqHint = (Array.isArray(lv.prerequisiteConcepts) && lv.prerequisiteConcepts.length)
+        ? "<div style=\"font-size:11px;color:#93c5fd;margin-top:4px\">相關先備概念：" + esc(lv.prerequisiteConcepts.join("、")) + "</div>"
+        : "";
 
       return (
         "<div class=\"map-node-row " + (idx % 2 === 0 ? "zig-left" : "zig-right") + "\">" +
@@ -253,6 +258,7 @@
         "<div>" +
         "<div style=\"font-size:15px;font-weight:800\">Level " + lv.levelNumber + "：" + esc(lv.title) + "</div>" +
         "<span class=\"planet-star-badge\">" + esc(starLabel) + "</span>" +
+        prereqHint +
         "</div></div>" +
         "<div class=\"planet-stage-list\">" +
         "<div>觀念學習：" + (x1Done ? "已完成" : "未完成") + "</div>" +
@@ -261,7 +267,6 @@
         "<div style=\"margin-top:8px\">" +
         "<button type=\"button\" class=\"sh-btn primary\" data-go-lvl=\"" + esc(lv.levelId) + "\" data-go-stg=\"X-1\">觀念學習</button>" +
         "<button type=\"button\" class=\"sh-btn\" " + (canX2 ? "" : "disabled") + " data-go-lvl=\"" + esc(lv.levelId) + "\" data-go-stg=\"X-2\">練習應用</button>" +
-        "<button type=\"button\" class=\"sh-btn\" data-open-summary=\"" + esc(lv.levelId) + "\">學習總結與更新精熟度</button>" +
         "</div></div></div>"
       );
     }).join("");
@@ -295,52 +300,22 @@
     mountCosmosCanvas(el);
   }
 
-  function renderStageView(el) {
-    var stageTitle = st.stageCode === "X-2" ? "練習應用" : "觀念學習";
-    var steps = st.stageCode === "X-2"
-      ? ["1. 互動練習", "2. 個人化加強", "3. 學習總結"]
-      : ["1. 教材學習", "2. 引導問題", "3. 理解檢查"];
-
-    var lvObj = null;
-    getChapters().forEach(function (c) {
-      (c.levels || []).forEach(function (l) {
-        if (l.levelId === st.levelId) lvObj = l;
-      });
-    });
-
-    var lessonHtml = (lvObj && Array.isArray(lvObj.lessons) && lvObj.lessons.length)
-      ? lvObj.lessons.map(function (txt) { return "<li style=\"margin-bottom:6px\">" + esc(txt) + "</li>"; }).join("")
-      : "<li>請依課程概念逐步完成本階段學習。</li>";
-
-    var html =
+  function renderEngineHost(el) {
+    el.innerHTML =
       "<div class=\"sh-panel\">" +
-      "<button type=\"button\" class=\"sh-btn\" id=\"shBackMapFromStage\">← 返回學習地圖</button>" +
-      "<button type=\"button\" class=\"sh-btn\" id=\"shBackHomeFromStage\">返回學生首頁</button>" +
-      "<h2 style=\"margin:10px 0 4px\">" + esc(st.levelId) + (lvObj ? "：" + esc(lvObj.title) : "") + "・" + esc(stageTitle) + "</h2>" +
-      "<div style=\"font-size:12px;color:#7dd3fc;margin-bottom:10px\">階段步驟：" + esc(steps.join(" → ")) + "</div>" +
-      "<ul style=\"font-size:14px;line-height:1.6;padding-left:20px;margin:0 0 12px\">" + lessonHtml + "</ul>" +
-      "<button type=\"button\" class=\"sh-btn primary\" data-open-summary=\"" + esc(st.levelId) + "\">前往學習總結與更新精熟度</button>";
+      "<button type=\"button\" class=\"sh-btn\" id=\"shBackMapFromEngine\">← 返回學習地圖</button>" +
+      "<button type=\"button\" class=\"sh-btn\" id=\"shBackHomeFromEngine\">返回學生首頁</button>" +
+      "<div id=\"shOriginalEngineMount\" style=\"margin-top:12px\"></div>" +
+      "</div>";
 
-    if (st.msg) html += "<div class=\"" + (st.msgOk ? "sh-banner-ok" : "sh-banner-err") + "\">" + esc(st.msg) + "</div>";
-    html += "</div>";
-    el.innerHTML = wrapScene("galaxy-amber-nebula", html);
-    mountCosmosCanvas(el);
-  }
-
-  function renderSummaryPanel(el) {
-    var curStat = getStat(st.levelId);
-    var html =
-      "<div class=\"sh-panel\">" +
-      "<button type=\"button\" class=\"sh-btn\" id=\"shBackMapFromSummary\">← 返回學習地圖</button>" +
-      "<h2 style=\"margin:10px 0 6px\">學習總結與精熟程度確認（" + esc(st.levelId) + "）</h2>" +
-      "<div style=\"font-size:13px;color:#cbd5e1;margin-bottom:10px\">目前紀錄精熟度：<strong>" + esc(formatStar(curStat)) + "</strong></div>" +
-      "<button type=\"button\" class=\"sh-btn primary\" id=\"shConfirmSummaryBtn\" " + (st.submitting ? "disabled" : "") + ">" +
-      (st.submitting ? "正在寫入與重算..." : "確認並更新精熟程度") +
-      "</button>";
-    if (st.msg) html += "<div class=\"" + (st.msgOk ? "sh-banner-ok" : "sh-banner-err") + "\">" + esc(st.msg) + "</div>";
-    html += "</div>";
-    el.innerHTML = wrapScene("galaxy-amber-nebula", html);
-    mountCosmosCanvas(el);
+    var mount = document.getElementById("shOriginalEngineMount");
+    if (typeof window.__openTeachingEngineForNode === "function") {
+      window.__openTeachingEngineForNode(st.levelId, st.stageCode);
+    } else if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") {
+      window.TeachingEngineModule.render(mount, st.levelId);
+    } else if (mount) {
+      mount.innerHTML = "<div style=\"font-size:13px;color:#cbd5e1\">尚未找到教學引擎模組。</div>";
+    }
   }
 
   async function refreshFromServer(target) {
@@ -371,8 +346,7 @@
       }
       st.loadingData = false;
       if (st.subView === "map") renderMap(target);
-      else if (st.subView === "stage") renderStageView(target);
-      else if (st.subView === "summary") renderSummaryPanel(target);
+      else if (st.subView === "engine") renderEngineHost(target);
       else renderHome(target);
     } catch (e) {
       st.loadingAuth = false;
@@ -408,13 +382,13 @@
     if (lvlBtn && !lvlBtn.disabled) {
       st.levelId = lvlBtn.getAttribute("data-go-lvl") || "CH1-L1";
       st.stageCode = lvlBtn.getAttribute("data-go-stg") || "X-1";
-      st.subView = "stage";
+      st.subView = "engine";
       st.msg = "";
-      renderStageView(root);
+      renderEngineHost(root);
       return;
     }
 
-    if (t.closest && (t.closest("#shBackMapFromStage") || t.closest("#shBackMapFromSummary"))) {
+    if (t.closest && t.closest("#shBackMapFromEngine")) {
       st.subView = "map";
       st.msg = "";
       if (typeof window.__onStudentSubViewChange === "function") window.__onStudentSubViewChange("learningMap");
@@ -422,46 +396,11 @@
       return;
     }
 
-    if (t.closest && t.closest("#shBackHomeFromStage")) {
+    if (t.closest && t.closest("#shBackHomeFromEngine")) {
       st.subView = "home";
       st.msg = "";
       if (typeof window.__onStudentSubViewChange === "function") window.__onStudentSubViewChange("studentHome");
       await refreshFromServer(root);
-      return;
-    }
-
-    var sumBtn = t.closest ? t.closest("[data-open-summary]") : null;
-    if (sumBtn) {
-      st.levelId = sumBtn.getAttribute("data-open-summary") || "CH1-L1";
-      st.subView = "summary";
-      st.msg = "";
-      renderSummaryPanel(root);
-      return;
-    }
-
-    if (t.closest && t.closest("#shConfirmSummaryBtn")) {
-      if (st.submitting) return;
-      st.submitting = true;
-      st.msg = "";
-      renderSummaryPanel(root);
-
-      var result = (window.LearningStatsAndResourcesModule && typeof window.LearningStatsAndResourcesModule.commitLearningSummary === "function")
-        ? await window.LearningStatsAndResourcesModule.commitLearningSummary({
-            studentId: st.user ? st.user.id : null,
-            chapterId: st.chapterId,
-            levelId: st.levelId,
-            stageId: "X-2",
-            markStageCompleted: true
-          })
-        : { ok: false, message: "統計模組未載入，無法儲存。" };
-
-      st.submitting = false;
-      st.msgOk = Boolean(result && result.ok);
-      st.msg = (result && result.message) || "儲存結果未知";
-      if (result && result.ok && Array.isArray(result.stats)) {
-        st.stats = result.stats;
-      }
-      renderSummaryPanel(root);
       return;
     }
 
@@ -531,6 +470,17 @@
     }
   });
 
+  // 監聽學習總結確認事件：只要教學引擎派發 "star-learning:summary-committed"，立即重新向伺服器同步精熟程度
+  window.addEventListener("star-learning:summary-committed", async function (ev) {
+    var root = document.getElementById("shStudentStage");
+    var detail = (ev && ev.detail) || {};
+    if (detail.levelId) st.levelId = detail.levelId;
+    if (detail.chapterId) st.chapterId = detail.chapterId;
+    st.msgOk = true;
+    st.msg = "已成功更新學習紀錄與精熟程度。";
+    if (root) await refreshFromServer(root);
+  });
+
   if (window.AuthSystemModule && typeof window.AuthSystemModule.subscribeAuthState === "function") {
     window.AuthSystemModule.subscribeAuthState(function () {
       var root = document.getElementById("shStudentStage");
@@ -546,3 +496,18 @@
     }
   };
 })();
+// 在教學引擎確認寫入並重算精熟程度成功後呼叫此段，通知地圖同步最新星級
+if (window.LearningStatsAndResourcesModule && typeof window.LearningStatsAndResourcesModule.commitLearningSummary === "function") {
+  window.LearningStatsAndResourcesModule.commitLearningSummary({
+    levelId: currentLevelId,
+    chapterId: currentChapterId,
+    stageId: "X-2",
+    markStageCompleted: true
+  }).then(function (r) {
+    if (r && r.ok) {
+      window.dispatchEvent(new CustomEvent("star-learning:summary-committed", {
+        detail: { levelId: currentLevelId, chapterId: currentChapterId, stats: r.stats }
+      }));
+    }
+  });
+}
