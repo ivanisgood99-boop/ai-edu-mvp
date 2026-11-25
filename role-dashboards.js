@@ -138,7 +138,8 @@
         db.from("achievements").select("id,title,description,category"),
         db.from("student_achievements").select("achievement_id,is_unlocked,unlocked_at").eq("student_id",uid),
         db.from("pk_matches").select("id,opponent_type,player_score,opponent_score,result,stardust_awarded,created_at").order("created_at",{ascending:false}).limit(10),
-        db.from("lottery_draws").select("id,celestial_tier,reward_type,gems_awarded,skin_id,created_at").order("created_at",{ascending:false}).limit(10)
+        db.from("lottery_draws").select("id,celestial_tier,reward_type,gems_awarded,skin_id,created_at").order("created_at",{ascending:false}).limit(10),
+        db.from("class_enrollments").select("class_id,joined_at,classes(class_name)").order("joined_at",{ascending:false})
       ]);
       results.forEach(function (r) { if (r.error) throw r.error; });
       var res=results[0].data, ownedChars=results[2].data||[], skins=results[3].data||[], ownedSkins=results[4].data||[];
@@ -160,6 +161,10 @@
       }).join("");
       var pk=(results[7].data||[]).map(function(x){return '<li>'+esc(x.result||'進行中')+'：'+x.player_score+' : '+x.opponent_score+'</li>';}).join("");
       var draws=(results[8].data||[]).map(function(x){return '<li>'+esc(x.celestial_tier)+'：'+esc(x.reward_type)+'（'+x.gems_awarded+' 寶石）</li>';}).join("");
+      var joinedClasses=(results[9].data||[]).map(function(x){
+        var cls=Array.isArray(x.classes)?x.classes[0]:x.classes;
+        return '<li>'+esc(cls&&cls.class_name?cls.class_name:"班級")+'（加入時間：'+esc(x.joined_at||"")+'）</li>';
+      }).join("");
       target.innerHTML=shell("星際收藏與資源中心","五種資源各自獨立記帳；購買與裝備由伺服器端原子操作。",
         '<div class="sh-grid">' +
         '<div class="sh-card"><small>學習點數</small><h3>'+res.learning_points+'</h3></div>' +
@@ -172,6 +177,7 @@
         '<h3>成就</h3>'+(ach||'<p class="sh-card">成就條件尚未設定。</p>')+
         '<h3>PK 紀錄</h3><ul>'+(pk||'<li>尚無對戰紀錄；對戰規則尚未上線。</li>')+'</ul>'+
         '<h3>星際抽獎紀錄</h3><ul>'+(draws||'<li>尚無抽獎紀錄；抽獎成本與機率規則尚待設定。</li>')+'</ul>'+
+        '<h3>我的班級</h3><ul>'+(joinedClasses||'<li>目前尚未加入班級。</li>')+'</ul>'+
         '<h3>加入班級</h3><form id="rdJoinClass">'+field("8 位班級邀請碼","rdInviteCode","輸入教師提供的代碼")+'<button class="sh-btn primary" type="submit">加入班級</button></form>'+
         '<h3>申請成為教師</h3><form id="rdTeacherApply">'+field("任教科目","rdSubject","例如：高中數學")+'<button class="sh-btn" type="submit">送出教師申請</button></form>');
     } catch(e){showError(target,"星際收藏與資源中心",e);}
