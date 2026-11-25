@@ -332,6 +332,10 @@
       if (!st.user) {
         st.stats = [];
         st.res = null;
+        st.profile = null;
+        if (typeof window.__onStudentSubViewChange === "function") {
+          window.__onStudentSubViewChange("studentHome");
+        }
         renderAuth(target);
         return;
       }
@@ -351,6 +355,9 @@
         }
         return;
       }
+      if (typeof window.__onStudentSubViewChange === "function") {
+        window.__onStudentSubViewChange(st.subView === "map" ? "learningMap" : "studentHome");
+      }
       if (window.LearningStatsAndResourcesModule) {
         var synced = await window.LearningStatsAndResourcesModule.syncResourcesAndRockets();
         if (synced) st.res = synced;
@@ -365,6 +372,10 @@
       st.loadingData = false;
       st.msgOk = false;
       st.msg = "讀取狀態失敗：" + (e && e.message ? e.message : String(e));
+      st.profile = null;
+      if (typeof window.__onStudentSubViewChange === "function") {
+        window.__onStudentSubViewChange("studentHome");
+      }
       renderAuth(target);
     }
   }
