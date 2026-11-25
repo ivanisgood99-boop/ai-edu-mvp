@@ -81,6 +81,7 @@
 | TEACH-02 | 教師申請 | 學生帳號送出教師申請 | applicant_id 由 auth.uid() 決定；不可代替其他帳號申請 |
 | TEACH-03 | 教師核准 | 管理員核准有帳號關聯的待審申請 | 申請狀態更新、profile role 變更為 teacher，並留下稽核紀錄 |
 | TEACH-04 | 建立班級 | 教師建立班級 | teacher_id 由 auth.uid() 決定，邀請碼由資料庫產生 |
+| TEACH-07 | 班級直接寫入 | 教師嘗試直接 INSERT／UPDATE classes 或直接 INSERT class_enrollments | 資料庫權限拒絕；只能透過伺服器 RPC 建立班級與加入班級 |
 | TEACH-05 | 邀請碼入班 | 學生輸入有效邀請碼 | 伺服器解析班級並建立唯一 enrollment；重複加入不產生重複列 |
 | TEACH-06 | 教師隔離 | 教師 A 查詢教師 B 的班級／名單 | 不得讀取或刪除其他教師的班級成員 |
 | ADMIN-01 | 管理頁面 | 非管理員嘗試進入管理頁 | 前端顯示拒絕；資料庫 RLS/RPC 同樣拒絕 |
