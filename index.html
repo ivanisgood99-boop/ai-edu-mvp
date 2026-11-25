@@ -70,11 +70,53 @@
 
       window.__onStudentSubViewChange = function (subKey) {
         if (VALID_NAVS.indexOf(subKey) !== -1) {
+          if (subKey === "teacher" || subKey === "admin") applyNavVisibility(subKey);
+          else applyNavVisibility("student");
           syncNavVisualState(subKey);
         }
       };
 
-      function renderStage(navKey) {
+      function applyNavVisibility(role) {
+        var allowed = role === "admin"
+          ? ["admin", "teacher"]
+          : role === "teacher"
+            ? ["teacher"]
+            : role === "student"
+              ? ["studentHome", "learningMap", "rewards"]
+              : ["studentHome"];
+        document.querySelectorAll("#mainNavBar .sh-nav-btn").forEach(function (btn) {
+          var key = btn.getAttribute("data-nav");
+          btn.hidden = allowed.indexOf(key) === -1;
+        });
+      }
+
+      var navRenderSequence = 0;
+      async function renderStage(navKey) {
+        var sequence = ++navRenderSequence;
+        var auth = window.AuthSystemModule;
+        var profile = null;
+        try {
+          if (auth && typeof auth.getCurrentProfile === "function") {
+            profile = await auth.getCurrentProfile();
+          }
+        } catch (e) {
+          profile = null;
+        }
+        if (sequence !== navRenderSequence) return;
+
+        var role = profile && profile.account_status === "active" ? profile.role : null;
+        applyNavVisibility(role);
+        var allowed = role === "admin"
+          ? ["admin", "teacher"]
+          : role === "teacher"
+            ? ["teacher"]
+            : role === "student"
+              ? ["studentHome", "learningMap", "rewards"]
+              : ["studentHome"];
+        if (allowed.indexOf(navKey) === -1) {
+          navKey = role === "admin" ? "admin" : role === "teacher" ? "teacher" : "studentHome";
+        }
+
         syncNavVisualState(navKey);
         var stage = document.getElementById("mainStage");
         if (!stage) return;
