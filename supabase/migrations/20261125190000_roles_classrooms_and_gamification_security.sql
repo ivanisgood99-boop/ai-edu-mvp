@@ -83,8 +83,20 @@ DROP POLICY IF EXISTS classes_teacher_select ON public.classes;
 DROP POLICY IF EXISTS classes_teacher_insert ON public.classes;
 DROP POLICY IF EXISTS classes_teacher_update ON public.classes;
 DROP POLICY IF EXISTS classes_teacher_delete ON public.classes;
+CREATE OR REPLACE FUNCTION public.is_class_member(p_class_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+  SELECT EXISTS (
+    SELECT 1 FROM public.class_enrollments ce
+    WHERE ce.class_id=p_class_id AND ce.student_id=auth.uid()
+  );
+$function$;
+REVOKE ALL ON FUNCTION public.is_class_member(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.is_class_member(uuid) TO authenticated;
+
 CREATE POLICY classes_teacher_select ON public.classes FOR SELECT TO authenticated
-  USING (teacher_id=auth.uid() AND public.is_active_teacher());
+  USING ((teacher_id=auth.uid() AND public.is_active_teacher()) OR public.is_class_member(id));
 -- Class creation is only available through create_teacher_class(); the RPC
 -- generates the invite code server-side. Do not grant direct table writes.
 
