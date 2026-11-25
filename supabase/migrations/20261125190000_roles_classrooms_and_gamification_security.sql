@@ -398,6 +398,11 @@ GRANT EXECUTE ON FUNCTION public.admin_set_account_status(uuid,text) TO authenti
 -- Pin search_path for the pre-existing SECURITY DEFINER resource and trigger functions.
 ALTER FUNCTION public.apply_learning_action_reward(text,text)
   SET search_path = pg_catalog, public;
+-- This legacy reward RPC accepts client-chosen action codes and references.
+-- It is not used by the current frontend; disable browser execution until
+-- rewards are derived from server-verified learning progress.
+REVOKE ALL ON FUNCTION public.apply_learning_action_reward(text,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.apply_learning_action_reward(text,text) TO service_role;
 ALTER FUNCTION public.sync_student_stamina_and_rockets(text)
   SET search_path = pg_catalog, public;
 ALTER FUNCTION public.use_rocket_supply()
