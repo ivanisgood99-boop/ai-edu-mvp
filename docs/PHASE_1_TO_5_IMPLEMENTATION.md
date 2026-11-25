@@ -88,7 +88,7 @@
 - 教師與管理員頁面新增共用登出按鈕，避免非學生頁面沒有登出入口。
 - E2E 測試計畫新增 NAV-01 至 NAV-05，涵蓋未登入、學生、教師、管理員導覽及教師／管理員登出。
 - 六個應用 JavaScript 檔案及 index.html 的兩段 inline script 均通過本地語法解析檢查。
-- 最新 Vercel Preview 已 READY，網址為 https://ai-edu-hkntcwvoo-ivanisgood99-9815.vercel.app，對應提交為 `77a4765290a977952a45621e465d6095f45bb9f0`。
+- 最新 Vercel Preview 已 READY，網址為 https://ai-edu-m7bc1lzh7-ivanisgood99-9815.vercel.app，對應提交為 `f05a58291dec10f3519e7e726aedc5038b516d1c`。
 - 本次仍未完成真實瀏覽器登入測試；Vercel 預覽受 SSO 保護，且尚無專用教師／管理員測試帳號。
 
 ## 本輪驗證
@@ -104,4 +104,5 @@
 - GitHub Actions run #79 的 JavaScript syntax job 通過；之後的最新六個 JS 檔案與兩段 inline script 亦重新解析成功。
 - Vercel Preview 已自動部署開發分支，但專案有 SSO 保護；目前未完成真實瀏覽器視覺與帳號操作驗收。
 - 正式 Supabase 尚未套用兩筆新 migration；正式資料未因本輪測試而改動。
+- Supabase Security Advisor 目前仍反映正式資料庫的舊權限狀態（包括舊獎勵 RPC 與舊資料表政策）；因安全 migration 尚未套用，不能把分支中的修正視為正式環境已修復。套用後必須重新執行 Security Advisor。
 - PR #3 保持 Draft，沒有合併或部署 GitHub Pages。
