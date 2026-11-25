@@ -114,7 +114,7 @@ REVOKE ALL ON TABLE public.classes,public.class_enrollments,public.teacher_appli
 GRANT SELECT ON TABLE public.classes TO authenticated;
 GRANT SELECT,DELETE ON TABLE public.class_enrollments TO authenticated;
 GRANT SELECT ON TABLE public.teacher_applications TO authenticated;
-GRANT USAGE,SELECT ON SEQUENCE public.class_enrollments_id_seq TO authenticated;
+REVOKE ALL ON SEQUENCE public.class_enrollments_id_seq FROM PUBLIC,anon,authenticated;
 
 DROP POLICY IF EXISTS profiles_admin_select ON public.profiles;
 CREATE POLICY profiles_admin_select ON public.profiles FOR SELECT TO authenticated
