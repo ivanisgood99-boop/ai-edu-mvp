@@ -20,6 +20,7 @@
         <button type="button" class="sh-nav-btn" data-nav="rewards">星際收藏</button>
         <button type="button" class="sh-nav-btn" data-nav="teacher">教師班級</button>
         <button type="button" class="sh-nav-btn" data-nav="admin">平台管理</button>
+        <button type="button" class="sh-nav-btn" id="globalLogoutBtn" hidden>登出</button>
       </div>
     </nav>
 
@@ -85,6 +86,10 @@
               ? ["studentHome", "learningMap", "rewards"]
               : ["studentHome"];
         document.querySelectorAll("#mainNavBar .sh-nav-btn").forEach(function (btn) {
+          if (btn.id === "globalLogoutBtn") {
+            btn.hidden = !role;
+            return;
+          }
           var key = btn.getAttribute("data-nav");
           btn.hidden = allowed.indexOf(key) === -1;
         });
@@ -141,9 +146,18 @@
         }
       }
 
-      document.getElementById("mainNavBar").addEventListener("click", function (ev) {
+      document.getElementById("mainNavBar").addEventListener("click", async function (ev) {
         var btn = ev.target && ev.target.closest ? ev.target.closest(".sh-nav-btn") : null;
         if (!btn) return;
+        if (btn.id === "globalLogoutBtn") {
+          ev.preventDefault();
+          try {
+            if (window.AuthSystemModule) await window.AuthSystemModule.signOutStudent();
+          } finally {
+            renderStage("studentHome");
+          }
+          return;
+        }
         var targetNav = btn.getAttribute("data-nav");
         if (targetNav) renderStage(targetNav);
       });
