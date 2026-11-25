@@ -160,6 +160,7 @@ BEGIN
   IF p_decision='approved' THEN
     UPDATE public.profiles SET role='teacher'
       WHERE id=v_app.applicant_id AND account_status='active';
+    IF NOT FOUND THEN RAISE EXCEPTION 'Applicant account is not active'; END IF;
   END IF;
   INSERT INTO public.platform_audit_logs(actor_id,action,target_table,target_id,details)
     VALUES(v_uid,'teacher_application_'||p_decision,'teacher_applications',
@@ -268,6 +269,7 @@ BEGIN
     WHERE id=v_uid AND role='student' AND account_status='active') THEN RAISE EXCEPTION 'Forbidden'; END IF;
   SELECT stardust_cost INTO v_cost FROM public.characters_catalog WHERE id=p_character_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Character not found'; END IF;
+  IF v_cost IS NULL OR v_cost<0 THEN RAISE EXCEPTION 'Invalid character price'; END IF;
   IF EXISTS (SELECT 1 FROM public.student_characters WHERE student_id=v_uid AND character_id=p_character_id) THEN
     RAISE EXCEPTION 'Character already owned';
   END IF;
@@ -293,6 +295,7 @@ BEGIN
     WHERE id=v_uid AND role='student' AND account_status='active') THEN RAISE EXCEPTION 'Forbidden'; END IF;
   SELECT gem_cost INTO v_cost FROM public.skins_catalog WHERE id=p_skin_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Skin not found'; END IF;
+  IF v_cost IS NULL OR v_cost<0 THEN RAISE EXCEPTION 'Invalid skin price'; END IF;
   IF EXISTS (SELECT 1 FROM public.student_skins WHERE student_id=v_uid AND skin_id=p_skin_id) THEN
     RAISE EXCEPTION 'Skin already owned';
   END IF;
