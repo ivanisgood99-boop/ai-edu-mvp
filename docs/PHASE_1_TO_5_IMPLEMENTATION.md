@@ -80,21 +80,23 @@
 ## 近期導覽與 Session 修正（2026-11-26）
 
 - 導覽列現在依 Supabase profiles 的資料庫角色顯示可用頁面，不採信 localStorage 中的角色資訊。
+- 教師班級資料表改為瀏覽器端唯讀；建立班級只能呼叫資料庫 RPC，由伺服器產生邀請碼，並撤銷直接寫入班級／入班序號的權限。
 - 進入已保存的頁面前會重新查驗登入者角色；未登入、帳號停用或角色不符時，回到安全的登入／首頁路徑。
 - 學生登入後重新顯示學習地圖與星際收藏入口；登出後清除前端角色狀態並恢復訪客導覽。
 - 教師與管理員頁面新增共用登出按鈕，避免非學生頁面沒有登出入口。
 - E2E 測試計畫新增 NAV-01 至 NAV-05，涵蓋未登入、學生、教師、管理員導覽及教師／管理員登出。
 - 六個應用 JavaScript 檔案及 index.html 的兩段 inline script 均通過本地語法解析檢查。
-- 最新 Vercel Preview 已 READY，對應提交為 `07cf37d19a246ae1ed392b113c9dc116a6e26cbe`。
+- 最新 Vercel Preview 已 READY，對應提交為 `e2ae67c699af8a9fbfc798979918b1b057f9fbe4`。
 - 本次仍未完成真實瀏覽器登入測試；Vercel 預覽受 SSO 保護，且尚無專用教師／管理員測試帳號。
 
 ## 本輪驗證
 
 - 兩筆資料庫安全 migration 已在同一交易內連續執行，最後 ROLLBACK；SQL/DDL 沒有執行錯誤。
+- 最新權限探針確認教師可透過 create_teacher_class RPC 建立班級，但直接 INSERT/UPDATE classes、直接 INSERT class_enrollments 及使用其序號皆無權限；學生仍可透過 join_class_by_invite_code RPC 加入。測試交易回滾後，班級列數仍為 0、測試帳號角色仍為 student、正式資料表舊政策仍維持原狀。
 - 交易回滾探針已模擬學生身分，確認本人 profile/resource 可讀、舊版 answer_logs 與備份快照無 SELECT 權限、學生無法直接 UPDATE 資源餘額。
 - 交易回滾探針亦成功建立測試班級、用邀請碼加入班級，並確認學生自行把 role 改成 admin 會被阻擋；測試列已回滾。
 - 這些是資料庫交易內測試，不等於真實瀏覽器 E2E。
-- GitHub Actions 新增 role-dashboards.js 語法檢查；首次執行發現條件運算式缺少括號，已修正。修正後的最新 CI 尚待確認。
+- GitHub Actions run #79 的 JavaScript syntax job 通過；之後的最新六個 JS 檔案與兩段 inline script 亦重新解析成功。
 - Vercel Preview 已自動部署開發分支，但專案有 SSO 保護；目前未完成真實瀏覽器視覺與帳號操作驗收。
 - 正式 Supabase 尚未套用兩筆新 migration；正式資料未因本輪測試而改動。
 - PR #3 保持 Draft，沒有合併或部署 GitHub Pages。
