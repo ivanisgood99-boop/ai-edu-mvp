@@ -85,13 +85,8 @@ DROP POLICY IF EXISTS classes_teacher_update ON public.classes;
 DROP POLICY IF EXISTS classes_teacher_delete ON public.classes;
 CREATE POLICY classes_teacher_select ON public.classes FOR SELECT TO authenticated
   USING (teacher_id=auth.uid() AND public.is_active_teacher());
-CREATE POLICY classes_teacher_insert ON public.classes FOR INSERT TO authenticated
-  WITH CHECK (teacher_id=auth.uid() AND public.is_active_teacher());
-CREATE POLICY classes_teacher_update ON public.classes FOR UPDATE TO authenticated
-  USING (teacher_id=auth.uid() AND public.is_active_teacher())
-  WITH CHECK (teacher_id=auth.uid() AND public.is_active_teacher());
-CREATE POLICY classes_teacher_delete ON public.classes FOR DELETE TO authenticated
-  USING (teacher_id=auth.uid() AND public.is_active_teacher());
+-- Class creation is only available through create_teacher_class(); the RPC
+-- generates the invite code server-side. Do not grant direct table writes.
 
 DROP POLICY IF EXISTS enrollments_student_or_teacher_select ON public.class_enrollments;
 DROP POLICY IF EXISTS enrollments_teacher_delete ON public.class_enrollments;
@@ -116,7 +111,7 @@ CREATE POLICY teacher_apps_admin_select ON public.teacher_applications FOR SELEC
   USING (public.is_platform_admin());
 
 REVOKE ALL ON TABLE public.classes,public.class_enrollments,public.teacher_applications FROM PUBLIC,anon,authenticated;
-GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE public.classes TO authenticated;
+GRANT SELECT ON TABLE public.classes TO authenticated;
 GRANT SELECT,DELETE ON TABLE public.class_enrollments TO authenticated;
 GRANT SELECT ON TABLE public.teacher_applications TO authenticated;
 GRANT USAGE,SELECT ON SEQUENCE public.class_enrollments_id_seq TO authenticated;
