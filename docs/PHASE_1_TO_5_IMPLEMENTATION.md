@@ -91,6 +91,12 @@
 - 最新 Vercel Preview 已 READY，網址為 https://ai-edu-m7bc1lzh7-ivanisgood99-9815.vercel.app，對應提交為 `f05a58291dec10f3519e7e726aedc5038b516d1c`。
 - 本次仍未完成真實瀏覽器登入測試；Vercel 預覽受 SSO 保護，且尚無專用教師／管理員測試帳號。
 
+## 正式資料庫待處理的高優先級風險
+
+- 本輪最後一次唯讀查核確認：正式 Supabase 的 `apply_learning_action_reward(text,text)` 目前仍允許 `anon` 與 `authenticated` 執行；該舊 RPC 接受前端自選獎勵代碼與參照值，並未在函式內驗證學習完成證據。
+- 正式 `answer_logs` 與 `teacher_applications` 目前各仍有 3 條舊的寬鬆政策。新 Migration 會移除這些政策並關閉舊 RPC 的瀏覽器執行權，但目前尚未套用，因此不能視為已修復。
+- 這是正式環境的既存風險，不是本輪測試造成的；本輪沒有修改正式權限或刪除資料。需先完成相容性與真實帳號驗收，再由使用者明確授權套用安全 Migration。
+
 ## 本輪驗證
 
 - 兩筆資料庫安全 migration 已在同一交易內連續執行，最後 ROLLBACK；SQL/DDL 沒有執行錯誤。
