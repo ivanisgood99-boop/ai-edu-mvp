@@ -70,6 +70,11 @@
       }
 
       window.__onStudentSubViewChange = function (subKey) {
+        if (subKey === "guest") {
+          applyNavVisibility(null);
+          syncNavVisualState("studentHome");
+          return;
+        }
         if (VALID_NAVS.indexOf(subKey) !== -1) {
           if (subKey === "teacher" || subKey === "admin") applyNavVisibility(subKey);
           else applyNavVisibility("student");
