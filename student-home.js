@@ -334,7 +334,7 @@
         st.res = null;
         st.profile = null;
         if (typeof window.__onStudentSubViewChange === "function") {
-          window.__onStudentSubViewChange("studentHome");
+          window.__onStudentSubViewChange("guest");
         }
         renderAuth(target);
         return;
@@ -374,7 +374,7 @@
       st.msg = "讀取狀態失敗：" + (e && e.message ? e.message : String(e));
       st.profile = null;
       if (typeof window.__onStudentSubViewChange === "function") {
-        window.__onStudentSubViewChange("studentHome");
+        window.__onStudentSubViewChange("guest");
       }
       renderAuth(target);
     }
