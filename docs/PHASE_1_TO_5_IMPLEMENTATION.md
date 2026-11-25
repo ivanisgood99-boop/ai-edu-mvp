@@ -95,6 +95,7 @@
 - 兩筆資料庫安全 migration 已在同一交易內連續執行，最後 ROLLBACK；SQL/DDL 沒有執行錯誤。
 - 最新權限探針確認教師可透過 create_teacher_class RPC 建立班級，但直接 INSERT/UPDATE classes、直接 INSERT class_enrollments 及使用其序號皆無權限；學生仍可透過 join_class_by_invite_code RPC 加入。測試交易回滾後，班級列數仍為 0、測試帳號角色仍為 student、正式資料表舊政策仍維持原狀。
 - 追加的班級可見範圍探針在同一回滾交易建立兩個班級，只讓學生加入其中一個；學生查詢只看見 1 個已加入班級，未加入班級不會洩漏。
+- 教師申請 RPC 也以學生測試身分成功建立待審申請；整筆交易已回滾，正式 teacher_applications 筆數維持 3 筆。
 - 交易回滾探針已模擬學生身分，確認本人 profile/resource 可讀、舊版 answer_logs 與備份快照無 SELECT 權限、學生無法直接 UPDATE 資源餘額。
 - 交易回滾探針亦成功建立測試班級、用邀請碼加入班級，並確認學生自行把 role 改成 admin 會被阻擋；測試列已回滾。
 - 這些是資料庫交易內測試，不等於真實瀏覽器 E2E。
