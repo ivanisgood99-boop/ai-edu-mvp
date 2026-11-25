@@ -93,7 +93,7 @@
 
 ## 正式資料庫待處理的高優先級風險
 
-- 本輪最後一次唯讀查核確認：正式 Supabase 的 `apply_learning_action_reward(text,text)` 目前仍允許 `anon` 與 `authenticated` 執行；該舊 RPC 接受前端自選獎勵代碼與參照值，並未在函式內驗證學習完成證據。
+- 本輪最後一次唯讀查核確認：正式 Supabase 的 `apply_learning_action_reward(text,text)` 目前仍授予 `anon` 與 `authenticated` EXECUTE 權限。函式本身會拒絕沒有 `auth.uid()` 的匿名呼叫；但已登入使用者仍可自行選擇獎勵代碼與參照值，函式並未驗證學習完成證據，因此存在自行觸發獎勵的風險。
 - 正式 `answer_logs` 與 `teacher_applications` 目前各仍有 3 條舊的寬鬆政策。新 Migration 會移除這些政策並關閉舊 RPC 的瀏覽器執行權，但目前尚未套用，因此不能視為已修復。
 - 這是正式環境的既存風險，不是本輪測試造成的；本輪沒有修改正式權限或刪除資料。需先完成相容性與真實帳號驗收，再由使用者明確授權套用安全 Migration。
 
