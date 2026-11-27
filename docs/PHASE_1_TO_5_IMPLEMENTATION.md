@@ -112,3 +112,12 @@
 - 正式 Supabase 尚未套用兩筆新 migration；正式資料未因本輪測試而改動。
 - Supabase Security Advisor 目前仍反映正式資料庫的舊權限狀態（包括舊獎勵 RPC 與舊資料表政策）；因安全 migration 尚未套用，不能把分支中的修正視為正式環境已修復。套用後必須重新執行 Security Advisor。
 - PR #3 保持 Draft，沒有合併或部署 GitHub Pages。
+
+
+## 資源 RPC 安全補強（2026-11-27）
+
+- 稽核發現舊版 `sync_student_stamina_and_rockets(p_tz)` 直接採用呼叫端傳入的時區計算每日火箭補給日期；登入者可在日期邊界嘗試切換時區，造成額外領取的風險。
+- 新增於尚未套用的安全 migration：保留 `p_tz` 參數以維持舊前端 RPC 相容性，但伺服器固定使用 `Asia/Taipei` 計算每日 04:00 補給日，不再採信客戶端時區。
+- 同一 migration 撤銷 `sync_student_stamina_and_rockets`、`use_rocket_supply` 的 PUBLIC／anon 執行權，只授權 authenticated；另撤銷 trigger function `guard_profile_update` 的一般 API 執行權。
+- 兩筆安全 migration 再次於同一交易執行並 ROLLBACK；以 authenticated 測試身分傳入 `Pacific/Kiritimati`，函式仍回傳伺服器台北日期 `2026-11-27`。權限探針確認 anon=false、authenticated=true。測試交易已回滾，正式資源餘額及日期未變更。
+- 以上是分支中的待部署修正；正式資料庫目前仍維持舊函式定義與舊權限，尚未修復。正式 migration 仍需相容性驗收及使用者明確授權。
