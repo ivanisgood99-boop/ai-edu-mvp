@@ -121,3 +121,11 @@
 | RPC-01 | 舊版自由獎勵介面 | 以 anon 與 authenticated 呼叫 `apply_learning_action_reward` | 兩者均被拒絕；只有可信任 service_role 可執行 |
 | RPC-02 | 正常體力同步 | 學生登入後同步本人流星體力 | 僅更新 auth.uid() 對應的本人資源 |
 | RPC-03 | 火箭補給 | 學生登入後使用火箭補給 | 僅扣除本人補給並更新本人流星體力，留下資源交易紀錄 |
+
+
+### RES-09 每日補給 RPC 不接受客戶端時區
+
+1. 在交易回滾測試中以有效 student JWT 呼叫 `sync_student_stamina_and_rockets('Pacific/Kiritimati')`。
+2. 確認 `last_rocket_grant_date` 仍依伺服器 `Asia/Taipei` 的每日 04:00 規則計算，不受參數影響。
+3. 確認 anon 對同步與使用補給 RPC 的 EXECUTE 為 false，authenticated 為 true。
+4. 確認匿名呼叫被拒絕、停用帳號呼叫被拒絕，且交易回滾後資源餘額、補給日期與帳本筆數均不變。
