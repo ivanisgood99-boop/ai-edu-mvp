@@ -33,7 +33,7 @@ Supabase Security Advisor 指出下列函式可由 anon 角色呼叫：
 - `guard_profile_update()`（trigger function）
 - `handle_new_user_profile()`（trigger function）
 
-已讀取函式定義，學生資源函式有 `auth.uid()` 空值檢查；但仍應撤銷不必要的 PUBLIC／anon EXECUTE，並只對實際需要的 authenticated RPC 授權。Trigger function 不應作為一般 RPC 公開呼叫。此項尚未執行，避免未確認前直接改動正式資料庫。
+已讀取函式定義，學生資源函式有 `auth.uid()` 空值檢查；但舊版每日火箭同步 RPC 還採信呼叫端傳入的時區，可能讓登入者在日期邊界嘗試多領補給。**分支待部署 migration 已**固定使用伺服器 `Asia/Taipei`、撤銷 `sync_student_stamina_and_rockets`／`use_rocket_supply` 的 PUBLIC／anon EXECUTE，並撤銷 trigger function 的一般 API 執行權；正式資料庫尚未套用，故正式環境仍未修復。
 
 ### 3. RLS 已開啟但沒有政策的功能表
 
@@ -70,3 +70,11 @@ Supabase Security Advisor 指出下列函式可由 anon 角色呼叫：
 - 舊版資料備份表仍存在：`backup_answer_logs_20261124` 34 筆、`backup_student_progress_20261124` 10 筆。
 - 正式資料表目前仍有舊版紀錄；未執行任何刪除、清空或 schema 變更。
 - Draft PR #3 保持未合併；GitHub Pages 正式網站未更新。
+
+
+## 2026-11-27 追加稽核：每日資源 RPC
+
+- 發現 `sync_student_stamina_and_rockets(p_tz)` 會用呼叫端提供的時區計算補給日期。新分支 migration 保留函式簽章以免破壞舊前端，但忽略 `p_tz`，固定以 `Asia/Taipei` 計算每日 04:00 補給日。
+- 同一 migration 將體力同步與火箭補給 RPC 權限縮至 authenticated，並封鎖 trigger function 的一般 API 執行權。
+- 已在交易內以 authenticated 測試身分傳入 `Pacific/Kiritimati`，確認回傳日期仍為台北伺服器日期；權限探針確認 anon 無法執行、authenticated 可執行。所有測試均 ROLLBACK。
+- 正式環境未修改；正式 RPC 仍是舊定義，須在授權套用 migration 後才會生效。
