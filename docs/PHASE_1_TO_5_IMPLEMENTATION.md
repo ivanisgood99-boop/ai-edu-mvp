@@ -88,7 +88,7 @@
 - 教師與管理員頁面新增共用登出按鈕，避免非學生頁面沒有登出入口。
 - E2E 測試計畫新增 NAV-01 至 NAV-05，涵蓋未登入、學生、教師、管理員導覽及教師／管理員登出。
 - 六個應用 JavaScript 檔案及 index.html 的兩段 inline script 均通過本地語法解析檢查。
-- 最新 Vercel Preview 已 READY，網址為 https://ai-edu-m7bc1lzh7-ivanisgood99-9815.vercel.app，對應提交為 `f05a58291dec10f3519e7e726aedc5038b516d1c`。
+- 最新程式碼預覽已 READY，網址為 https://ai-edu-87wk14y6k-ivanisgood99-9815.vercel.app，對應程式提交 `4a0366e731b7aae132a6386fa930445fbb3faf57`（其後 PR head 僅新增 migration／文件提交）。
 - 本次仍未完成真實瀏覽器登入測試；Vercel 預覽受 SSO 保護，且尚無專用教師／管理員測試帳號。
 
 ## 正式資料庫待處理的高優先級風險
