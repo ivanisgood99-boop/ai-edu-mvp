@@ -17,7 +17,8 @@
     profile: null,
     res: null,
     stats: [],
-    canvasStop: null
+    canvasStop: null,
+    refreshRequestId: 0
   };
 
   function esc(s) {
@@ -320,6 +321,9 @@
 
   async function refreshFromServer(target) {
     if (!target) return;
+    // 登入狀態可能因初始載入、登入事件與頁面切換而同時觸發多次；只允許最新請求更新畫面。
+    var requestId = ++st.refreshRequestId;
+    function isLatestRequest() { return requestId === st.refreshRequestId; }
     if (!window.AuthSystemModule) {
       st.loadingAuth = false;
       renderAuth(target);
@@ -327,6 +331,7 @@
     }
     try {
       var s = await window.AuthSystemModule.getCurrentSession();
+      if (!isLatestRequest()) return;
       st.loadingAuth = false;
       st.user = (s && s.user) ? s.user : null;
       if (!st.user) {
@@ -341,6 +346,7 @@
       }
       st.loadingData = true;
       var b = await window.AuthSystemModule.loadStudentProfileAndResources(st.user);
+      if (!isLatestRequest()) return;
       st.profile = b.profile;
       st.res = b.resources;
       if (st.profile && (st.profile.role === "teacher" || st.profile.role === "admin")) {
@@ -360,14 +366,17 @@
       }
       if (window.LearningStatsAndResourcesModule) {
         var synced = await window.LearningStatsAndResourcesModule.syncResourcesAndRockets();
+        if (!isLatestRequest()) return;
         if (synced) st.res = synced;
         st.stats = await window.LearningStatsAndResourcesModule.fetchStudentStatistics(st.user.id);
+        if (!isLatestRequest()) return;
       }
       st.loadingData = false;
       if (st.subView === "map") renderMap(target);
       else if (st.subView === "engine") renderEngineHost(target);
       else renderHome(target);
     } catch (e) {
+      if (!isLatestRequest()) return;
       st.loadingAuth = false;
       st.loadingData = false;
       st.msgOk = false;
