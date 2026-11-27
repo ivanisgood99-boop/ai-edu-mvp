@@ -410,3 +410,95 @@ ALTER FUNCTION public.use_rocket_supply()
 ALTER FUNCTION public.handle_new_user_profile()
   SET search_path = pg_catalog, public;
 REVOKE ALL ON FUNCTION public.handle_new_user_profile() FROM PUBLIC, anon, authenticated;
+
+REVOKE ALL ON FUNCTION public.guard_profile_update() FROM PUBLIC, anon, authenticated;
+
+-- Daily rocket grants must use one server-owned timezone. Keep p_tz for RPC
+-- signature compatibility, but deliberately ignore caller-supplied timezones:
+-- otherwise a signed-in client can shift the grant date and claim an extra
+-- daily supply around the date boundary.
+CREATE OR REPLACE FUNCTION public.sync_student_stamina_and_rockets(p_tz text DEFAULT 'Asia/Taipei')
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $function$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_res public.student_resources%ROWTYPE;
+  v_now timestamptz := now();
+  v_local_now timestamp := (v_now AT TIME ZONE 'Asia/Taipei');
+  v_grant_date date;
+  v_ticks integer;
+  v_new_stamina integer;
+  v_new_tick_at timestamptz;
+  v_added_rockets integer := 0;
+BEGIN
+  IF v_uid IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id=v_uid AND role='student' AND account_status='active'
+  ) THEN
+    RAISE EXCEPTION 'Forbidden';
+  END IF;
+
+  INSERT INTO public.student_resources (student_id)
+    VALUES (v_uid)
+    ON CONFLICT (student_id) DO NOTHING;
+
+  SELECT * INTO v_res
+  FROM public.student_resources
+  WHERE student_id=v_uid
+  FOR UPDATE;
+
+  IF v_local_now::time >= time '04:00:00' THEN
+    v_grant_date := v_local_now::date;
+  ELSE
+    v_grant_date := v_local_now::date - 1;
+  END IF;
+
+  IF v_res.last_rocket_grant_date IS NULL THEN
+    v_added_rockets := 1;
+    v_res.rocket_supplies := COALESCE(v_res.rocket_supplies,0) + 1;
+    v_res.last_rocket_grant_date := v_grant_date;
+    INSERT INTO public.resource_transactions(student_id,resource_type,delta,action_code,reference_id)
+      VALUES(v_uid,'rocket_supply',1,'DAILY_ROCKET_0400',v_grant_date::text);
+  ELSIF v_grant_date > v_res.last_rocket_grant_date THEN
+    v_added_rockets := v_grant_date - v_res.last_rocket_grant_date;
+    v_res.rocket_supplies := COALESCE(v_res.rocket_supplies,0) + v_added_rockets;
+    v_res.last_rocket_grant_date := v_grant_date;
+    INSERT INTO public.resource_transactions(student_id,resource_type,delta,action_code,reference_id)
+      VALUES(v_uid,'rocket_supply',v_added_rockets,'DAILY_ROCKET_0400',v_grant_date::text);
+  END IF;
+
+  v_res.stamina_max := LEAST(300,GREATEST(100,COALESCE(v_res.stamina_max,100)));
+  IF v_res.stamina < v_res.stamina_max THEN
+    v_ticks := FLOOR(EXTRACT(EPOCH FROM
+      (v_now - COALESCE(v_res.last_stamina_tick_at,v_now))) / 300.0)::integer;
+    IF v_ticks > 0 THEN
+      v_new_stamina := LEAST(v_res.stamina_max,v_res.stamina + v_ticks);
+      v_new_tick_at := COALESCE(v_res.last_stamina_tick_at,v_now) + (v_ticks * interval '5 minutes');
+      IF v_new_stamina >= v_res.stamina_max THEN v_new_tick_at := v_now; END IF;
+      v_res.stamina := v_new_stamina;
+      v_res.last_stamina_tick_at := v_new_tick_at;
+    END IF;
+  ELSE
+    v_res.last_stamina_tick_at := v_now;
+  END IF;
+
+  UPDATE public.student_resources
+  SET stamina=v_res.stamina,
+      stamina_max=v_res.stamina_max,
+      last_stamina_tick_at=v_res.last_stamina_tick_at,
+      rocket_supplies=v_res.rocket_supplies,
+      last_rocket_grant_date=v_res.last_rocket_grant_date,
+      updated_at=v_now
+  WHERE student_id=v_uid
+  RETURNING * INTO v_res;
+
+  RETURN to_jsonb(v_res);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.sync_student_stamina_and_rockets(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.sync_student_stamina_and_rockets(text) TO authenticated;
+REVOKE ALL ON FUNCTION public.use_rocket_supply() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.use_rocket_supply() TO authenticated;
