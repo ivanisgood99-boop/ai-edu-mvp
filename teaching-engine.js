@@ -24,6 +24,8 @@
   var STORE_KEY = "ai_edu_phase2_records_v4";
   var MASTERY_SYNC_KEY = "ai_edu_level_mastery_v1";
   var learningSyncQueues = {};
+  var activeStudentId = null;
+  var serverStatisticsByLevel = {};
 
   function queueLearningAnswer(levelId, log) {
     var key = String(levelId || "");
@@ -706,11 +708,32 @@
     }
   };
 
-  // Level 彼此獨立；僅同一 Level 的 X-2 必須等待該 Level 的 X-1 完成。
+  function getServerStat(sid, levelId) {
+    if (!activeStudentId || String(sid || "") !== activeStudentId) return null;
+    return serverStatisticsByLevel[levelId] || null;
+  }
+
+  function getServerStarLabel(stat, fallback) {
+    if (!stat) return fallback;
+    if (stat.mastery_level && stat.mastery_level !== "UNRATED") return stat.mastery_level;
+    var labels = {
+      THREE_STARS: "★★★ 精熟",
+      TWO_STARS: "★★☆ 穩定進步",
+      ONE_STAR: "★☆☆ 需要加強"
+    };
+    return labels[stat.star_rating] || fallback;
+  }
+
+  // Level 彼此獨立；同時採用伺服器已保存進度與本機尚待同步的有效證據。
   function getStrictStageAccess(sid, levelId, stageCode) {
     var lv = LEVEL_MAP[levelId] || LEVELS[0];
     var curSes = Repo.getSession(sid, lv.levelId);
-    var completed = isStageFormallyCompleted(curSes, stageCode);
+    var serverStat = getServerStat(sid, lv.levelId);
+    var localX1Done = isStageFormallyCompleted(curSes, "X-1");
+    var localX2Done = isStageFormallyCompleted(curSes, "X-2");
+    var x1Done = localX1Done || Boolean(serverStat && serverStat.stage_x1_completed);
+    var x2Done = localX2Done || Boolean(serverStat && serverStat.stage_x2_completed);
+    var completed = stageCode === "X-2" ? x2Done : x1Done;
 
     if (stageCode !== "X-2") {
       return {
@@ -723,7 +746,6 @@
       };
     }
 
-    var x1Done = isStageFormallyCompleted(curSes, "X-1");
     if (!x1Done) {
       return {
         allowed: false,
@@ -820,6 +842,8 @@
     var items = chLevels.map(function (lv) {
       var ses = Repo.getSession(sid, lv.levelId);
       var ev = evaluateLevelStarRating(ses.logs, ses.starCode, ses.remedialPassed, lv.levelId);
+      var serverStat = getServerStat(sid, lv.levelId);
+      if (serverStat) ev.studentLabel = getServerStarLabel(serverStat, ev.studentLabel);
       var s1Acc = getStrictStageAccess(sid, lv.levelId, "X-1");
       var s2Acc = getStrictStageAccess(sid, lv.levelId, "X-2");
       var lvDone = Boolean(s1Acc.completed && s2Acc.completed);
@@ -868,7 +892,17 @@
     selectedLevelId: "CH2-L1"
   };
 
+  function setStudentContext(userId, statistics) {
+    activeStudentId = userId ? String(userId) : null;
+    serverStatisticsByLevel = {};
+    (Array.isArray(statistics) ? statistics : []).forEach(function (row) {
+      if (row && row.level_id) serverStatisticsByLevel[row.level_id] = row;
+    });
+  }
+
   function getSid() {
+    // 已登入時一律以 Supabase Auth UID 作為本機進度命名空間，避免共用裝置跨帳號混用。
+    if (activeStudentId) return activeStudentId;
     var el = document.getElementById("stuInp");
     var d = el && el.value ? el.value.trim() : "";
     var s = (localStorage.getItem("edu_stu") || "").trim();
@@ -878,6 +912,9 @@
   function renderLevelSummary(lv, s, starEv) {
     var ch = CHAPTERS[lv.chapterId];
     var chComp = getChapterCompletion(s.studentId, lv.chapterId);
+    var x1Completed = getStrictStageAccess(s.studentId, lv.levelId, "X-1").completed;
+    var x2Completed = getStrictStageAccess(s.studentId, lv.levelId, "X-2").completed;
+    var levelCompleted = x1Completed && x2Completed;
     var subHtml = lv.subConcepts.map(function (sc) {
       var st = s.subConceptMastery[sc] || "尚未檢驗完成";
       return "<li><strong>" + esc(sc) + "</strong>：" + esc(st) + "</li>";
@@ -898,7 +935,7 @@
       "<h4 class=\"te-card-title\">階段 6：學習總結（本 Level 總結）</h4>" +
       "<div class=\"te-sub-box\">" +
       "<strong>目前星球精熟度：</strong>" + esc(starEv.studentLabel) + "<br>" +
-      "<strong>關卡狀態：</strong>觀念學習（" + (s.stage1Completed ? "已完成" : "未完成") + "）｜刷題練習（" + (s.stage2Completed ? "已完成" : "進行中") + "）｜本 Level（" + (s.levelCompleted ? "已完成" : "未完成") + "）<br>" +
+      "<strong>關卡狀態：</strong>觀念學習（" + (x1Completed ? "已完成" : "未完成") + "）｜刷題練習（" + (x2Completed ? "已完成" : "進行中") + "）｜本 Level（" + (levelCompleted ? "已完成" : "未完成") + "）<br>" +
       (starEv.missingReasons.length ? "<strong>待補齊評量依據：</strong>" + esc(starEv.missingReasons.join("；")) + "<br>" : "") +
       "<strong>正式定義：</strong>" + formatMathForStudent(lv.lesson.definition) + "<br>" +
       "<strong>公式推導與使用條件：</strong>" + formatMathForStudent(lv.lesson.derivation) + "｜" + formatMathForStudent(lv.lesson.conditions) + "<br>" +
@@ -1164,6 +1201,12 @@
     }
 
     var starEv = Repo.saveAndSyncMastery(s);
+    var serverStat = getServerStat(sid, lv.levelId);
+    if (serverStat) {
+      starEv.code = serverStat.star_rating || starEv.code;
+      starEv.studentLabel = getServerStarLabel(serverStat, starEv.studentLabel);
+      if (serverStat.level_completed) starEv.missingReasons = [];
+    }
     var chComp = getChapterCompletion(sid, ch.chapterId);
 
     var chTabs = Object.keys(CHAPTERS).map(function (cid) {
@@ -1299,6 +1342,11 @@
     if (compLv) compLv.addEventListener("click", async function () {
       var cur = Repo.getSession(getSid(), lv.levelId);
       var ev = Repo.saveAndSyncMastery(cur);
+      var serverX1 = getStrictStageAccess(getSid(), lv.levelId, "X-1");
+      var serverX2 = getStrictStageAccess(getSid(), lv.levelId, "X-2");
+      cur.stage1Completed = serverX1.completed;
+      cur.stage2Completed = serverX2.completed;
+      cur.levelCompleted = serverX1.completed && serverX2.completed;
       if (!cur.levelCompleted) {
         cur.lastFeedback = "目前尚未完成本 Level 正式條件（" + ev.detail + "），請完成必要學習活動後再確認。";
         cur.lastFeedbackType = "guide";
@@ -1377,6 +1425,7 @@
     getStrictStageAccess: getStrictStageAccess,
     isStageFormallyCompleted: isStageFormallyCompleted,
     flushLearningSync: flushLearningSync,
+    setStudentContext: setStudentContext,
     formatMathForStudent: formatMathForStudent,
     getStudentTitle: function (id) {
       var lv = LEVELS.find(function (x) { return x.levelId === id || x.legacyNodeId === id; });
