@@ -58,3 +58,30 @@ test("model secret is server-only and per-student quotas are enforced", () => {
   assert.ok(migration.includes("v_row.minute_count >= 12 OR v_row.day_count >= 120"));
   assert.ok(!edgeFunction.includes("OPENAI_API_KEY="));
 });
+
+
+test("guide answers are evaluated by the Edge Function and retained for retry", () => {
+  const engine = fs.readFileSync(path.join(process.cwd(), "teaching-engine.js"), "utf8");
+  const queueStart = engine.indexOf("function queueLearningAnswer");
+  const queueEnd = engine.indexOf("function replayPendingLearningAnswers", queueStart);
+  const queue = engine.slice(queueStart, queueEnd);
+  assert.ok(queue.includes('client.functions.invoke("evaluate-guide-answer"'));
+  assert.ok(queue.includes("applyGuideEvaluationToSession(uid, key, log, response.data)"));
+  assert.ok(queue.includes("removeLearningOutboxEntry(uid, log.clientSubmissionId)"));
+  assert.ok(queue.includes("response.data.ok !== true"));
+  const submitStart = engine.indexOf("async function processSubmit");
+  const submitEnd = engine.indexOf("\n  function ", submitStart + 20);
+  const submit = engine.slice(submitStart, submitEnd > submitStart ? submitEnd : undefined);
+  assert.ok(submit.includes('verdict: "pending_ai"'));
+  assert.ok(submit.includes("await queueLearningAnswer"));
+  assert.ok(!submit.includes("SemanticHook.analyzeExplanation"));
+});
+
+test("a pending guide answer is retried before another attempt is accepted", () => {
+  const engine = fs.readFileSync(path.join(process.cwd(), "teaching-engine.js"), "utf8");
+  const submitStart = engine.indexOf("async function processSubmit");
+  const submitEnd = engine.indexOf("\n  function ", submitStart + 20);
+  const submit = engine.slice(submitStart, submitEnd > submitStart ? submitEnd : undefined);
+  assert.ok(submit.includes("var pendingGuide = readLearningOutbox(activeStudentId).find"));
+  assert.ok(submit.includes("await flushLearningSync(lv.levelId)"));
+});
