@@ -59,7 +59,7 @@ test("student learning map uses exactly the levels exposed by the teaching engin
   assert.equal(chapters.length, Object.keys(engine.chapters).length);
   for (const chapter of chapters) {
     const engineChapter = engine.chapters[chapter.chapterId];
-    const expected = engine.levels
+    const expected = Array.from(engine.levels)
       .filter((level) => level.chapterId === chapter.chapterId)
       .sort((a, b) => a.levelNumber - b.levelNumber)
       .map((level) => level.levelId);
