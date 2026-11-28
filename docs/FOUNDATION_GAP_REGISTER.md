@@ -78,3 +78,11 @@ Supabase Security Advisor 指出下列函式可由 anon 角色呼叫：
 - 同一 migration 將體力同步與火箭補給 RPC 權限縮至 authenticated，並封鎖 trigger function 的一般 API 執行權。
 - 已在交易內以 authenticated 測試身分傳入 `Pacific/Kiritimati`，確認回傳日期仍為台北伺服器日期；權限探針確認 anon 無法執行、authenticated 可執行。所有測試均 ROLLBACK。
 - 正式環境未修改；正式 RPC 仍是舊定義，須在授權套用 migration 後才會生效。
+
+
+## 2026-11-28 追加缺口與修正
+
+- 舊版地圖課程資料與教學引擎實際 Level 數量／名稱不一致，可能讓學生點到不存在的關卡。分支已改為由教學引擎產生地圖資料，並將第二章「直線與圓」設為預設章節。
+- 舊版教學引擎只依本機紀錄判斷 X-1 是否完成；跨裝置登入時無法可靠還原伺服器進度。分支已改用 Supabase Auth UID 隔離本機進度，並以伺服器 learning_statistics 作為 X-1／X-2 解鎖與精熟度顯示的依據。
+- 追加待部署 migration `20261128120000_require_active_student_for_learning_writes.sql`，要求作答與精熟度重算 RPC 的呼叫者必須是 active student。三筆安全 migration 已在單一交易內執行並回滾；active student 正常寫入、模擬 suspended profile 的兩個 RPC 均拒絕。正式資料與權限未變更。
+- 新增自動化測試涵蓋課程關卡一致性、跨裝置解鎖與跨帳號隔離；首次 CI 執行發現測試框架跨 VM array prototype 比較問題，已修正並等待新一輪 CI 結果。
