@@ -177,3 +177,18 @@
 - 將待部署 migration 時間調整為依序接在 active-student migration 後：`20261128130000_idempotent_learning_answer_submissions.sql`。
 - 最新 Vercel Preview：READY，commit `f316c17e58cd7fca8505e17e662d2cb9b078f1df`，網址 https://ai-edu-b8oxlhcka-ivanisgood99-9815.vercel.app。
 - 這個 Preview 仍是受保護預覽，不代表已完成真實瀏覽器 E2E；正式資料庫欄位與 RPC 在 rollback 後確認不存在，migration 未套用。
+
+
+## 伺服器端 AI 引導評量（2026-11-28）
+
+- 新增 `private.learning_guide_rubrics`，將目前 10 個 Level 的 Guide 題目、核心概念、參考定義、推導與條件保存在私有 schema。
+- 新增 Supabase Edge Function `evaluate-guide-answer`：驗證 JWT、active student、題目 ID 與答案長度，再以伺服器 rubric 呼叫 OpenAI Structured Outputs。
+- 評分 JSON 包含 verdict、0–4 分、回饋、缺少概念與下一個引導問題；只有 3–4 分可以 pass。模型輸出需通過伺服器 schema 驗證。
+- 新增 service-role-only rubric read、quota reservation、guide evaluation persistence RPC。瀏覽器角色無法讀取 rubric 或直接把 Guide 標記為通過。
+- Guide 評分寫入 `learning_answer_logs.ai_evaluation`，X-1 重算只接受新評量的 `verdict='pass'`；舊紀錄沒有 ai_evaluation 時維持相容。
+- 前端 Guide 提交改走 Edge Function，沿用 UID 專屬 outbox 與 UUID 重試；常見電子郵件、電話及識別碼在瀏覽器保存前及模型請求前遮蔽。
+- 每位學生每分鐘最多 12 次、每日最多 120 次模型評量請求；已存在 UUID 的重試不重複消耗模型額度。
+- 新增 `docs/AI_GUIDE_EVALUATION_DESIGN.md` 與 `docs/AI_GUIDE_EVALUATION_TEST_PLAN.md`。
+- CI run #249：17/17 Node tests passed；JavaScript syntax 與 Deno Edge Function type-check 通過。
+- Migration 已於正式 Supabase 交易內執行 DDL／權限斷言後 ROLLBACK，確認 10 筆 rubric 與 service-role-only 權限契約；正式資料庫未保留新物件。
+- **未部署 Edge Function、未套用 migration、未設定 OPENAI_API_KEY；AI 評分尚未在正式環境啟用。**
