@@ -37,6 +37,12 @@ BEGIN
   IF v_uid IS NULL OR p_client_submission_id IS NULL THEN
     RAISE EXCEPTION 'Unauthorized or missing client submission ID';
   END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.profiles p
+    WHERE p.id = v_uid AND p.role = 'student' AND p.account_status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'Forbidden: an active student account is required';
+  END IF;
 
   -- Serialize retries of the same client submission, including concurrent tabs.
   PERFORM pg_advisory_xact_lock(
