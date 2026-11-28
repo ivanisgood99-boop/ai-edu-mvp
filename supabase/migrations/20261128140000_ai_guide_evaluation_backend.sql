@@ -134,6 +134,22 @@ $function$;
 REVOKE ALL ON FUNCTION public.reserve_learning_guide_ai_quota(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reserve_learning_guide_ai_quota(uuid) TO service_role;
 
+-- Tighten three rubrics whose initial reference explanations were too generic.
+UPDATE private.learning_guide_rubrics
+SET reference_derivation = '將 x=a、y=b 代入直線方程式；若等式左右相等，則點 (a,b) 在直線上，否則不在直線上。'
+WHERE level_id = 'CH2-L3';
+
+UPDATE private.learning_guide_rubrics
+SET reference_definition = '圓心 C(h,k)、半徑 r 的圓，對點 P(x,y) 計算 CP = sqrt((x-h)^2 + (y-k)^2)。',
+    reference_derivation = '比較點到圓心的距離 CP 與半徑 r：CP<r 在圓內；CP=r 在圓上；CP>r 在圓外。',
+    conditions = 'r>0；距離 CP 與半徑 r 使用相同單位。'
+WHERE level_id = 'CH2-L6';
+
+UPDATE private.learning_guide_rubrics
+SET reference_derivation = '同類項具有相同的變數與相同次方，可用分配律合併係數，例如 ax^n+bx^n=(a+b)x^n；不同次方代表不同的項，不能合併成單一項。',
+    conditions = '只合併變數部分完全相同的同類項；常數項可彼此合併。'
+WHERE level_id = 'CH3-L1';
+
 -- The Edge Function retrieves rubrics through a service-only RPC; the private
 -- schema itself is never exposed through the public Data API.
 CREATE OR REPLACE FUNCTION public.get_learning_guide_rubric(
