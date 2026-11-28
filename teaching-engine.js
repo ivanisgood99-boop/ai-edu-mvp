@@ -843,7 +843,11 @@
       var ses = Repo.getSession(sid, lv.levelId);
       var ev = evaluateLevelStarRating(ses.logs, ses.starCode, ses.remedialPassed, lv.levelId);
       var serverStat = getServerStat(sid, lv.levelId);
-      if (serverStat) ev.studentLabel = getServerStarLabel(serverStat, ev.studentLabel);
+      if (serverStat) {
+        ev.code = serverStat.star_rating || ev.code;
+        ev.studentLabel = getServerStarLabel(serverStat, ev.studentLabel);
+        if (serverStat.level_completed) ev.missingReasons = [];
+      }
       var s1Acc = getStrictStageAccess(sid, lv.levelId, "X-1");
       var s2Acc = getStrictStageAccess(sid, lv.levelId, "X-2");
       var lvDone = Boolean(s1Acc.completed && s2Acc.completed);
