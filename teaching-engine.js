@@ -227,10 +227,13 @@
       session.lastFeedback = "引導說明通過 AI 觀念評量。現在進入「3. 理解檢查」，逐一檢驗本 Level 子觀念。";
       session.lastFeedbackType = "ok";
     } else {
-      savedLog.hintLevel = getNextHint(session);
+      var hintCode = getNextHint(session);
+      savedLog.hintLevel = hintCode;
       var feedback = savedLog.aiFeedback || "目前的說明還不足以確認觀念，請再想一想。";
       var nextPrompt = savedLog.aiNextPrompt ? " " + savedLog.aiNextPrompt : "";
-      session.lastFeedback = feedback + nextPrompt;
+      var lv = LEVEL_MAP[levelId] || LEVELS[0];
+      var hintText = lv.hints && lv.hints[hintCode] ? "【提示 " + hintCode + "】" + lv.hints[hintCode] : "";
+      session.lastFeedback = feedback + " " + hintText + nextPrompt;
       session.lastFeedbackType = "guide";
     }
     Repo.saveAndSyncMastery(session);
@@ -1202,14 +1205,30 @@
         Repo.saveAndSyncMastery(s);
         return;
       }
+      var pendingGuide = readLearningOutbox(activeStudentId).find(function (entry) {
+        return entry && entry.log && entry.log.stageType === "guide"
+          && entry.log.questionId === lv.guide.questionId;
+      });
+      if (pendingGuide) {
+        var pendingResult = await flushLearningSync(lv.levelId);
+        s = Repo.getSession(sid, lv.levelId);
+        if (!pendingResult.ok) {
+          s.lastFeedback = "上一筆引導答案仍在等待 AI 評量同步，請稍後再試。原因：" + pendingResult.message;
+          s.lastFeedbackType = "guide";
+          Repo.saveAndSyncMastery(s);
+        }
+        return;
+      }
       var priorG = s.logs.filter(function (x) { return x.questionId === lv.guide.questionId; }).length;
+      var previousHint = Number(s.hintLevelIndex || 0);
       var guideLog = {
         clientSubmissionId: createClientSubmissionId(),
         chapterId: lv.chapterId, levelId: lv.levelId, knowledgeNode: lv.legacyNodeId,
         questionId: lv.guide.questionId, stageType: "guide", subConcept: lv.subConcepts[0],
         dimension: lv.guide.dimension, studentAnswer: ans, isCorrect: false,
-        verdict: "pending_ai", errorCode: null, hintLevel: null, isFirstTry: priorG === 0,
-        isRemedial: false, completedAt: new Date().toISOString()
+        verdict: "pending_ai", errorCode: null,
+        hintLevel: previousHint > 0 ? "H" + Math.min(previousHint, 4) : null,
+        isFirstTry: priorG === 0, isRemedial: false, completedAt: new Date().toISOString()
       };
       Repo.appendLog(sid, lv.levelId, guideLog);
       var syncResult = await queueLearningAnswer(lv.levelId, guideLog, activeStudentId, false);
