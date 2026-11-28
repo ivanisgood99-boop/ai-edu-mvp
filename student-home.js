@@ -5,8 +5,8 @@
     mode: "login",
     subView: "home",
     track: "topic",
-    chapterId: "CH-1",
-    levelId: "CH1-L1",
+    chapterId: "CH-2",
+    levelId: "CH2-L1",
     stageCode: "X-1",
     msg: "",
     msgOk: true,
@@ -17,7 +17,8 @@
     profile: null,
     res: null,
     stats: [],
-    canvasStop: null
+    canvasStop: null,
+    refreshRequestId: 0
   };
 
   function esc(s) {
@@ -29,6 +30,33 @@
   }
 
   function getChapters() {
+    // 教學引擎是課程關卡與題目的唯一執行來源；地圖必須由同一份 Level 清單產生。
+    var engine = window.TeachingEngineModule;
+    if (engine && engine.chapters && Array.isArray(engine.levels)) {
+      return Object.keys(engine.chapters).map(function (chapterId) {
+        var source = engine.chapters[chapterId];
+        var chapterLevels = engine.levels
+          .filter(function (level) { return level.chapterId === chapterId; })
+          .sort(function (a, b) { return a.levelNumber - b.levelNumber; });
+        return {
+          chapterId: source.chapterId,
+          chapterNumber: source.chapterNumber,
+          title: source.title,
+          themeClass: chapterId === "CH-2" ? "galaxy-cyan-nebula" :
+            (chapterId === "CH-3" ? "galaxy-violet-nebula" : "galaxy-amber-nebula"),
+          finalAssessment: { title: source.title + "・星系最終評量" },
+          levels: chapterLevels.map(function (level) {
+            return {
+              levelId: level.levelId,
+              levelNumber: level.levelNumber,
+              title: level.title,
+              planetStyle: level.planetStyle,
+              prerequisiteConcepts: []
+            };
+          })
+        };
+      }).sort(function (a, b) { return a.chapterNumber - b.chapterNumber; });
+    }
     if (window.CurriculumDataModule && Array.isArray(window.CurriculumDataModule.chapters)) {
       return window.CurriculumDataModule.chapters;
     }
@@ -309,9 +337,10 @@
       "</div>";
 
     var mount = document.getElementById("shOriginalEngineMount");
-    if (typeof window.__openTeachingEngineForNode === "function") {
-      window.__openTeachingEngineForNode(st.levelId, st.stageCode);
-    } else if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") {
+    if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") {
+      if (typeof window.TeachingEngineModule.setStudentContext === "function") {
+        window.TeachingEngineModule.setStudentContext(st.user && st.user.id, st.stats);
+      }
       window.TeachingEngineModule.render(mount, st.levelId);
     } else if (mount) {
       mount.innerHTML = "<div style=\"font-size:13px;color:#cbd5e1\">尚未找到教學引擎模組。</div>";
@@ -320,6 +349,9 @@
 
   async function refreshFromServer(target) {
     if (!target) return;
+    // 登入狀態可能因初始載入、登入事件與頁面切換而同時觸發多次；只允許最新請求更新畫面。
+    var requestId = ++st.refreshRequestId;
+    function isLatestRequest() { return requestId === st.refreshRequestId; }
     if (!window.AuthSystemModule) {
       st.loadingAuth = false;
       renderAuth(target);
@@ -327,32 +359,71 @@
     }
     try {
       var s = await window.AuthSystemModule.getCurrentSession();
+      if (!isLatestRequest()) return;
       st.loadingAuth = false;
       st.user = (s && s.user) ? s.user : null;
       if (!st.user) {
+        if (window.TeachingEngineModule && typeof window.TeachingEngineModule.setStudentContext === "function") {
+          window.TeachingEngineModule.setStudentContext(null, []);
+        }
         st.stats = [];
         st.res = null;
+        st.profile = null;
+        if (typeof window.__onStudentSubViewChange === "function") {
+          window.__onStudentSubViewChange("guest");
+        }
         renderAuth(target);
         return;
       }
       st.loadingData = true;
       var b = await window.AuthSystemModule.loadStudentProfileAndResources(st.user);
+      if (!isLatestRequest()) return;
       st.profile = b.profile;
       st.res = b.resources;
+      if (st.profile && (st.profile.role === "teacher" || st.profile.role === "admin")) {
+        st.loadingData = false;
+        if (typeof window.__onStudentSubViewChange === "function") {
+          window.__onStudentSubViewChange(st.profile.role);
+        }
+        if (window.RoleDashboardModule) {
+          window.RoleDashboardModule.render(target, st.profile.role);
+        } else {
+          renderAuth(target);
+        }
+        return;
+      }
+      if (typeof window.__onStudentSubViewChange === "function") {
+        window.__onStudentSubViewChange(st.subView === "map" ? "learningMap" : "studentHome");
+      }
+      // Establish the authenticated UID before the statistics read. If that read
+      // fails transiently, the durable answer outbox can still begin retrying.
+      if (window.TeachingEngineModule && typeof window.TeachingEngineModule.setStudentContext === "function") {
+        window.TeachingEngineModule.setStudentContext(st.user.id, []);
+      }
       if (window.LearningStatsAndResourcesModule) {
         var synced = await window.LearningStatsAndResourcesModule.syncResourcesAndRockets();
+        if (!isLatestRequest()) return;
         if (synced) st.res = synced;
         st.stats = await window.LearningStatsAndResourcesModule.fetchStudentStatistics(st.user.id);
+        if (!isLatestRequest()) return;
+      }
+      if (window.TeachingEngineModule && typeof window.TeachingEngineModule.setStudentContext === "function") {
+        window.TeachingEngineModule.setStudentContext(st.user.id, st.stats);
       }
       st.loadingData = false;
       if (st.subView === "map") renderMap(target);
       else if (st.subView === "engine") renderEngineHost(target);
       else renderHome(target);
     } catch (e) {
+      if (!isLatestRequest()) return;
       st.loadingAuth = false;
       st.loadingData = false;
       st.msgOk = false;
       st.msg = "讀取狀態失敗：" + (e && e.message ? e.message : String(e));
+      st.profile = null;
+      if (typeof window.__onStudentSubViewChange === "function") {
+        window.__onStudentSubViewChange("guest");
+      }
       renderAuth(target);
     }
   }
@@ -434,7 +505,13 @@
     if (t.closest && t.closest("#shLogout")) {
       st.msg = "";
       st.subView = "home";
-      if (window.AuthSystemModule) await window.AuthSystemModule.signOutStudent();
+      if (window.AuthSystemModule) {
+        var signedOut = await window.AuthSystemModule.signOutStudent();
+        if (!signedOut || !signedOut.ok) {
+          st.msgOk = false;
+          st.msg = (signedOut && signedOut.message) || "登出失敗，請稍後再試。";
+        }
+      }
       await refreshFromServer(root);
     }
   });
@@ -493,21 +570,7 @@
       if (!target) return;
       if (opts && opts.subView) st.subView = opts.subView;
       refreshFromServer(target);
-    }
+    },
+    getChapters: getChapters
   };
 })();
-// 在教學引擎確認寫入並重算精熟程度成功後呼叫此段，通知地圖同步最新星級
-if (window.LearningStatsAndResourcesModule && typeof window.LearningStatsAndResourcesModule.commitLearningSummary === "function") {
-  window.LearningStatsAndResourcesModule.commitLearningSummary({
-    levelId: currentLevelId,
-    chapterId: currentChapterId,
-    stageId: "X-2",
-    markStageCompleted: true
-  }).then(function (r) {
-    if (r && r.ok) {
-      window.dispatchEvent(new CustomEvent("star-learning:summary-committed", {
-        detail: { levelId: currentLevelId, chapterId: currentChapterId, stats: r.stats }
-      }));
-    }
-  });
-}

@@ -46,6 +46,17 @@
       return { ok: false, message: "缺少 level_id，無法更新精熟程度。" };
     }
 
+    // Ensure all earlier answers for this Level have reached the server before recomputing progress.
+    if (window.TeachingEngineModule && typeof window.TeachingEngineModule.flushLearningSync === "function") {
+      var pendingSync = await window.TeachingEngineModule.flushLearningSync(levelId);
+      if (!pendingSync.ok) {
+        return {
+          ok: false,
+          message: "仍有作答紀錄尚未成功同步，暫時不更新正式精熟度。請確認網路後重新嘗試。原因：" + pendingSync.message
+        };
+      }
+    }
+
     var rpcRes = await c.rpc("save_summary_and_recompute_level", {
       p_level_id: levelId,
       p_chapter_id: (opts && opts.chapterId) || null,
@@ -57,18 +68,38 @@
       return { ok: false, message: "儲存失敗：" + rpcRes.error.message };
     }
 
-    var uid = opts && opts.studentId ? opts.studentId : null;
-    if (!uid && window.AuthSystemModule && typeof window.AuthSystemModule.getCurrentSession === "function") {
-      var s = await window.AuthSystemModule.getCurrentSession();
-      uid = s && s.user ? s.user.id : null;
+    // RPC transport 成功不代表 Level 已通過伺服器端完成條件；必須檢查重算結果。
+    var updatedRow = rpcRes ? rpcRes.data : null;
+    if (!updatedRow || updatedRow.level_completed !== true) {
+      return {
+        ok: false,
+        message: "伺服器尚未確認本 Level 完成。請確認所有必要作答已成功同步，再重新提交學習總結。",
+        updatedRow: updatedRow
+      };
     }
 
-    var freshStats = uid ? await fetchStudentStatistics(uid) : [];
+    // 只有伺服器確認 level_completed=true 後，才回報正式完成。
+    var uid = opts && opts.studentId ? opts.studentId : null;
+    var statsWarning = null;
+    var freshStats = [];
+    try {
+      if (!uid && window.AuthSystemModule && typeof window.AuthSystemModule.getCurrentSession === "function") {
+        var s = await window.AuthSystemModule.getCurrentSession();
+        uid = s && s.user ? s.user.id : null;
+      }
+      if (uid) freshStats = await fetchStudentStatistics(uid);
+      else statsWarning = "紀錄已寫入，但目前無法取得登入者資料以重新讀取星級。";
+    } catch (refreshError) {
+      statsWarning = "紀錄已寫入；但重新讀取星級失敗：" +
+        (refreshError && refreshError.message ? refreshError.message : "請重新整理頁面。");
+    }
+
     return {
       ok: true,
       message: "已成功更新學習紀錄與精熟程度。",
-      updatedRow: rpcRes ? rpcRes.data : null,
-      stats: freshStats
+      updatedRow: updatedRow,
+      stats: freshStats,
+      statsWarning: statsWarning
     };
   }
 

@@ -14,6 +14,7 @@
     var sb = client();
     if (!sb) return { session: null, user: null };
     var r = await sb.auth.getSession();
+    if (r && r.error) throw new Error("讀取登入狀態失敗：" + r.error.message);
     var s = r && r.data ? r.data.session : null;
     return { session: s, user: s && s.user ? s.user : null };
   }
@@ -37,7 +38,9 @@
   }
   async function signOutStudent() {
     var sb = client();
-    if (sb) await sb.auth.signOut();
+    if (!sb) return { ok: false, message: "尚未建立 Supabase 用戶端" };
+    var r = await sb.auth.signOut();
+    if (r && r.error) return { ok: false, message: "登出失敗：" + r.error.message };
     return { ok: true };
   }
   async function sendPasswordReset(email, redirectTo) {
@@ -49,11 +52,33 @@
   }
   async function loadStudentProfileAndResources(user) {
     var sb = client();
-    var p = { id: user.id, display_name: (user.user_metadata && user.user_metadata.display_name) || user.email, role: "student" };
-    if (!sb) return { profile: p, resources: null };
-    var pr = await sb.from("profiles").select("id,display_name,role,account_status").eq("id", user.id).maybeSingle();
-    var rr = await sb.from("student_resources").select("*").eq("student_id", user.id).maybeSingle();
-    return { profile: (pr && pr.data) || p, resources: (rr && rr.data) || null };
+    if (!sb) throw new Error("尚未建立 Supabase 用戶端");
+    if (!user || !user.id) throw new Error("缺少有效的登入者身分");
+
+    // 角色與帳號狀態只讀取資料庫 profiles，不以可由使用者自行修改的 user_metadata 作為授權依據。
+    var pr = await sb.from("profiles")
+      .select("id,display_name,role,account_status")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (pr && pr.error) throw new Error("讀取學生個人資料失敗：" + pr.error.message);
+    if (!pr || !pr.data) throw new Error("找不到此帳號的個人資料，請重新登入或聯絡管理員。");
+    if (pr.data.account_status !== "active") {
+      await sb.auth.signOut();
+      throw new Error("此帳號目前未啟用，請聯絡管理員。");
+    }
+
+    if (pr.data.role !== "student") {
+      return { profile: pr.data, resources: null };
+    }
+
+    var rr = await sb.from("student_resources")
+      .select("*")
+      .eq("student_id", user.id)
+      .maybeSingle();
+    if (rr && rr.error) throw new Error("讀取學生資源失敗：" + rr.error.message);
+    if (!rr || !rr.data) throw new Error("找不到此帳號的資源資料，請聯絡管理員。");
+
+    return { profile: pr.data, resources: rr.data };
   }
   function subscribeAuthState(cb) {
     var sb = client();
@@ -61,7 +86,21 @@
     var sub = sb.auth.onAuthStateChange(function (ev, sess) { cb(ev, sess); });
     return function () { if (sub && sub.data && sub.data.subscription) sub.data.subscription.unsubscribe(); };
   }
+  async function getCurrentProfile() {
+    var s = await getCurrentSession();
+    if (!s.user) return null;
+    var sb = client();
+    var r = await sb.from("profiles")
+      .select("id,display_name,role,account_status")
+      .eq("id", s.user.id)
+      .maybeSingle();
+    if (r.error) throw new Error("讀取帳號角色失敗：" + r.error.message);
+    return r.data || null;
+  }
+
   window.AuthSystemModule = {
+    getClient: client,
+    getCurrentProfile: getCurrentProfile,
     getCurrentSession: getCurrentSession,
     signUpStudent: signUpStudent,
     signInStudent: signInStudent,

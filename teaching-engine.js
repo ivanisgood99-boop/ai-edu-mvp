@@ -23,6 +23,247 @@
 
   var STORE_KEY = "ai_edu_phase2_records_v4";
   var MASTERY_SYNC_KEY = "ai_edu_level_mastery_v1";
+  var OUTBOX_PREFIX = "ai_edu_answer_outbox_v1:";
+  var learningSyncQueues = {};
+  var queuedSubmissionPromises = {};
+  var activeStudentId = null;
+  var serverStatisticsByLevel = {};
+
+  function createClientSubmissionId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      return window.crypto.randomUUID();
+    }
+    var bytes = [];
+    if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+      var raw = new Uint8Array(16);
+      window.crypto.getRandomValues(raw);
+      bytes = Array.from(raw);
+    } else {
+      for (var i = 0; i < 16; i += 1) bytes.push(Math.floor(Math.random() * 256));
+      var seed = Date.now().toString(16);
+      for (var j = 0; j < seed.length && j < 12; j += 1) bytes[j] = parseInt(seed[j], 16) || 0;
+    }
+    bytes[6] = (bytes[6] & 15) | 64;
+    bytes[8] = (bytes[8] & 63) | 128;
+    var hex = bytes.map(function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
+    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
+  }
+
+  function outboxStorageKey(uid) {
+    return OUTBOX_PREFIX + String(uid || "");
+  }
+
+  function readLearningOutbox(uid) {
+    try {
+      var raw = localStorage.getItem(outboxStorageKey(uid));
+      var parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function writeLearningOutbox(uid, entries) {
+    localStorage.setItem(outboxStorageKey(uid), JSON.stringify(entries));
+  }
+
+  function persistLearningOutboxEntry(uid, levelId, log) {
+    if (!uid || !log || !log.clientSubmissionId) return;
+    var entries = readLearningOutbox(uid);
+    var existing = entries.findIndex(function (item) {
+      return item && item.clientSubmissionId === log.clientSubmissionId;
+    });
+    var entry = {
+      clientSubmissionId: log.clientSubmissionId,
+      levelId: String(levelId),
+      log: log,
+      createdAt: new Date().toISOString()
+    };
+    if (existing >= 0) entries[existing] = entry;
+    else entries.push(entry);
+    writeLearningOutbox(uid, entries);
+  }
+
+  function removeLearningOutboxEntry(uid, submissionId) {
+    var entries = readLearningOutbox(uid).filter(function (item) {
+      return item && item.clientSubmissionId !== submissionId;
+    });
+    writeLearningOutbox(uid, entries);
+  }
+
+  function queueLearningAnswer(levelId, log, studentId, persist) {
+    var uid = String(studentId || activeStudentId || "");
+    var key = String(levelId || "");
+    if (!uid || !key || !log) return Promise.resolve({ ok: false, message: "缺少登入者或 Level ID" });
+    if (!log.clientSubmissionId) log.clientSubmissionId = createClientSubmissionId();
+
+    try {
+      if (persist !== false) persistLearningOutboxEntry(uid, key, log);
+    } catch (storageError) {
+      return Promise.resolve({
+        ok: false,
+        message: "無法將待同步作答安全保存於本機，請確認裝置儲存空間後再試。"
+      });
+    }
+
+    var submissionKey = uid + "::" + log.clientSubmissionId;
+    if (queuedSubmissionPromises[submissionKey]) return queuedSubmissionPromises[submissionKey];
+
+    var queueKey = uid + "::" + key;
+    if (!learningSyncQueues[queueKey]) {
+      learningSyncQueues[queueKey] = { tail: Promise.resolve(), errors: {} };
+    }
+    var queue = learningSyncQueues[queueKey];
+
+    var next = queue.tail.catch(function () {}).then(async function () {
+      try {
+        if (!window.AuthSystemModule || typeof window.AuthSystemModule.getCurrentSession !== "function") {
+          throw new Error("登入狀態尚未就緒；作答已保留，稍後會自動重試。");
+        }
+        var auth = await window.AuthSystemModule.getCurrentSession();
+        if (!auth || !auth.user || String(auth.user.id) !== uid) {
+          throw new Error("目前登入帳號與待同步作答不一致；作答已保留，切回原帳號後會重試。");
+        }
+        var client = window.sbClient;
+        if (!client && window.supabase && window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+          client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+            auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+          });
+          window.sbClient = client;
+        }
+        if (!client) throw new Error("Supabase 用戶端尚未初始化；作答已保留，稍後會重試。");
+
+        var type = log.stageType || (log.isRemedial ? "remedial" : "practice");
+        var hint = /^H[1-4]$/.test(String(log.hintLevel || "")) ? Number(String(log.hintLevel).slice(1)) : 0;
+        var response;
+        if (type === "guide") {
+          response = await client.functions.invoke("evaluate-guide-answer", {
+            body: {
+              clientSubmissionId: log.clientSubmissionId,
+              levelId: key,
+              questionId: log.questionId,
+              answer: String(log.studentAnswer == null ? "" : log.studentAnswer),
+              hintCount: hint
+            }
+          });
+          if (response && response.error) throw new Error(response.error.message || "AI 引導評量同步失敗");
+          if (!response || !response.data || response.data.ok !== true || !response.data.evaluation) {
+            throw new Error((response && response.data && response.data.error) || "AI 評量服務未回傳有效結果");
+          }
+          applyGuideEvaluationToSession(uid, key, log, response.data);
+        } else {
+          response = await client.rpc("record_learning_answer_idempotent", {
+            p_client_submission_id: log.clientSubmissionId,
+            p_chapter_id: log.chapterId || null,
+            p_level_id: key,
+            p_question_type: type,
+            p_question_id: log.questionId,
+            p_raw_answer: String(log.studentAnswer == null ? "" : log.studentAnswer),
+            p_is_correct: Boolean(log.isCorrect),
+            p_concept_id: type === "remedial" ? (log.errorCode || null) : (log.subConcept || null),
+            p_sub_step: null,
+            p_hint_count: hint,
+            p_ai_reason: log.errorCode || log.verdict || null
+          });
+          if (response && response.error) throw new Error(response.error.message || "作答紀錄同步失敗");
+        }
+        removeLearningOutboxEntry(uid, log.clientSubmissionId);
+        delete queue.errors[log.clientSubmissionId];
+        window.dispatchEvent(new CustomEvent("star-learning:answer-synced", {
+          detail: {
+            levelId: key,
+            questionId: log.questionId,
+            clientSubmissionId: log.clientSubmissionId,
+            result: response ? response.data : null
+          }
+        }));
+        return { ok: true, data: response ? response.data : null };
+      } catch (error) {
+        var message = error && error.message ? error.message : "未知同步錯誤";
+        queue.errors[log.clientSubmissionId] = message;
+        window.dispatchEvent(new CustomEvent("star-learning:sync-error", {
+          detail: { levelId: key, questionId: log.questionId, clientSubmissionId: log.clientSubmissionId, message: message }
+        }));
+        return { ok: false, message: message };
+      }
+    });
+
+    queue.tail = next;
+    queuedSubmissionPromises[submissionKey] = next;
+    next.then(function () {
+      delete queuedSubmissionPromises[submissionKey];
+    });
+    return next;
+  }
+
+  function replayPendingLearningAnswers(uid, levelId) {
+    if (!uid) return;
+    readLearningOutbox(uid).forEach(function (entry) {
+      if (!entry || !entry.log || !entry.clientSubmissionId) return;
+      if (levelId && String(entry.levelId) !== String(levelId)) return;
+      queueLearningAnswer(entry.levelId, entry.log, uid, false);
+    });
+  }
+
+  function redactGuideAnswerForStorage(value) {
+    return String(value || "")
+      .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, "[已遮蔽電子郵件]")
+      .replace(/\\b[A-Z][12]\\d{8}\\b/gi, "[已遮蔽識別碼]")
+      .replace(/\\b09\\d{2}[- ]?\\d{3}[- ]?\\d{3}\\b/g, "[已遮蔽電話]")
+      .replace(/\\b0[2-8][-\\s]?\\d{3,4}[-\\s]?\\d{4}\\b/g, "[已遮蔽電話]");
+  }
+
+  function applyGuideEvaluationToSession(uid, levelId, log, payload) {
+    var evaluation = payload && payload.evaluation ? payload.evaluation : payload;
+    if (!uid || !log || !evaluation || !["pass", "partial", "incorrect", "unclear"].includes(evaluation.verdict)) return;
+    if (typeof Repo === "undefined" || !Repo || typeof Repo.getSession !== "function") return;
+    var session = Repo.getSession(uid, levelId);
+    var savedLog = (session.logs || []).find(function (item) {
+      return item && item.clientSubmissionId === log.clientSubmissionId;
+    });
+    if (!savedLog) return;
+    savedLog.verdict = evaluation.verdict;
+    savedLog.isCorrect = evaluation.verdict === "pass";
+    savedLog.errorCode = evaluation.verdict === "incorrect" ? "E02" : (evaluation.verdict === "pass" ? null : "E05");
+    savedLog.aiFeedback = String(evaluation.feedback || "");
+    savedLog.aiMissingConcepts = Array.isArray(evaluation.missing_concepts) ? evaluation.missing_concepts.slice(0, 6) : [];
+    savedLog.aiNextPrompt = String(evaluation.next_prompt || "");
+    if (evaluation.verdict === "pass") {
+      session.hintLevelIndex = 0;
+      session.subStep = 3;
+      session.checkIndex = 0;
+      session.lastFeedback = "引導說明通過 AI 觀念評量。現在進入「3. 理解檢查」，逐一檢驗本 Level 子觀念。";
+      session.lastFeedbackType = "ok";
+    } else {
+      var hintCode = getNextHint(session);
+      savedLog.hintLevel = hintCode;
+      var feedback = savedLog.aiFeedback || "目前的說明還不足以確認觀念，請再想一想。";
+      var nextPrompt = savedLog.aiNextPrompt ? " " + savedLog.aiNextPrompt : "";
+      var lv = LEVEL_MAP[levelId] || LEVELS[0];
+      var hintText = lv.hints && lv.hints[hintCode] ? "【提示 " + hintCode + "】" + lv.hints[hintCode] : "";
+      session.lastFeedback = feedback + " " + hintText + nextPrompt;
+      session.lastFeedbackType = "guide";
+    }
+    Repo.saveAndSyncMastery(session);
+  }
+
+
+  async function flushLearningSync(levelId) {
+    var uid = activeStudentId;
+    if (!uid) return { ok: true };
+    replayPendingLearningAnswers(uid, levelId);
+    var queue = learningSyncQueues[uid + "::" + String(levelId || "")];
+    if (queue) await queue.tail;
+    var pending = readLearningOutbox(uid).filter(function (item) {
+      return !levelId || String(item.levelId) === String(levelId);
+    });
+    var errors = queue ? Object.values(queue.errors) : [];
+    if (pending.length || errors.length) {
+      var message = Array.from(new Set(errors.length ? errors : ["仍有作答尚未同步完成。"])).join("；");
+      return { ok: false, message: message };
+    }
+    return { ok: true };
+  }
 
   function esc(x) {
     return String(x || "")
@@ -622,6 +863,7 @@
     },
     appendLog: function (sid, levelId, lg) {
       var s = this.getSession(sid, levelId);
+      if (!lg.clientSubmissionId) lg.clientSubmissionId = createClientSubmissionId();
       s.logs.push(lg);
       if (lg.subConcept) {
         s.subConceptMastery[lg.subConcept] = lg.isCorrect ? "已掌握" : "需加強（" + (lg.errorCode || "待釐清") + "）";
@@ -630,39 +872,57 @@
         s.remedialPassed = true;
       }
       this.saveAndSyncMastery(s);
+      if (activeStudentId && String(sid || "") === activeStudentId) {
+        queueLearningAnswer(levelId, lg, activeStudentId, true);
+      }
       return this.getSession(sid, levelId);
     }
   };
 
+  function getServerStat(sid, levelId) {
+    if (!activeStudentId || String(sid || "") !== activeStudentId) return null;
+    return serverStatisticsByLevel[levelId] || null;
+  }
+
+  function getServerStarLabel(stat, fallback) {
+    if (!stat) return fallback;
+    if (stat.mastery_level && stat.mastery_level !== "UNRATED") return stat.mastery_level;
+    var labels = {
+      THREE_STARS: "★★★ 精熟",
+      TWO_STARS: "★★☆ 穩定進步",
+      ONE_STAR: "★☆☆ 需要加強"
+    };
+    return labels[stat.star_rating] || fallback;
+  }
+
+  // Level 彼此獨立；同時採用伺服器已保存進度與本機尚待同步的有效證據。
   function getStrictStageAccess(sid, levelId, stageCode) {
     var lv = LEVEL_MAP[levelId] || LEVELS[0];
-    var seq = getOrderedChapterStages(lv.chapterId);
-    var targetKey = lv.levelId + "::" + stageCode;
-    var idx = seq.findIndex(function (item) { return item.key === targetKey; });
     var curSes = Repo.getSession(sid, lv.levelId);
-    var completed = isStageFormallyCompleted(curSes, stageCode);
+    var serverStat = getServerStat(sid, lv.levelId);
+    var localX1Done = isStageFormallyCompleted(curSes, "X-1");
+    var localX2Done = isStageFormallyCompleted(curSes, "X-2");
+    var x1Done = localX1Done || Boolean(serverStat && serverStat.stage_x1_completed);
+    var x2Done = localX2Done || Boolean(serverStat && serverStat.stage_x2_completed);
+    var completed = stageCode === "X-2" ? x2Done : x1Done;
 
-    if (idx <= 0) {
+    if (stageCode !== "X-2") {
       return {
         allowed: true,
         completed: completed,
         status: completed ? "completed" : "available",
         statusText: completed
-          ? "已完成 Stage " + seq[0].code + "｜" + seq[0].stageTitle + "（可重新查看）。"
-          : "目前可進行 Stage " + seq[0].code + "｜" + seq[0].stageTitle + "。"
+          ? "已完成此 Level 的觀念學習（可重新查看）。"
+          : "目前可進行此 Level 的觀念學習。"
       };
     }
 
-    var prev = seq[idx - 1];
-    var prevSes = Repo.getSession(sid, prev.levelId);
-    var prevDone = isStageFormallyCompleted(prevSes, prev.stageCode);
-
-    if (!prevDone) {
+    if (!x1Done) {
       return {
         allowed: false,
         completed: false,
         status: "locked",
-        statusText: "完成 Stage " + prev.code + "｜" + prev.stageTitle + "，才能解鎖 Stage " + seq[idx].code + "｜" + seq[idx].stageTitle + "。"
+        statusText: "請先完成此 Level 的觀念學習，才能解鎖練習應用。"
       };
     }
 
@@ -671,8 +931,8 @@
       completed: completed,
       status: completed ? "completed" : "available",
       statusText: completed
-        ? "已完成 Stage " + seq[idx].code + "｜" + seq[idx].stageTitle + "（可重新查看）。"
-        : "目前可進行 Stage " + seq[idx].code + "｜" + seq[idx].stageTitle + "。"
+        ? "已完成此 Level 的練習應用（可重新查看）。"
+        : "目前可進行此 Level 的練習應用。"
     };
   }
 
@@ -683,14 +943,20 @@
 
     list.forEach(function (it) {
       var qid = it.questionId || "Q";
-      if (!seen[qid]) {
-        seen[qid] = true;
+      var type = it.stageType || (it.isRemedial ? "remedial" : "practice");
+      if (type === "guide") return;
+
+      var conceptKey = type === "remedial" ? (it.errorCode || "") : (it.subConcept || "");
+      var evidenceKey = type + "::" + qid + "::" + conceptKey;
+      if (!seen[evidenceKey]) {
+        seen[evidenceKey] = true;
         fTotal += 1;
         if (it.isCorrect) fOk += 1;
+        if (it.hintLevel === "H3" || it.hintLevel === "H4") highHint += 1;
       }
-      if (it.stageType === "check") hasCheck = true;
-      if (it.stageType === "practice" || it.isRemedial) hasPractice = true;
-      if (it.hintLevel === "H3" || it.hintLevel === "H4") highHint += 1;
+
+      if (type === "check" && it.isCorrect) hasCheck = true;
+      if ((type === "practice" || type === "remedial") && it.isCorrect) hasPractice = true;
     });
 
     var missing = [];
@@ -747,6 +1013,12 @@
     var items = chLevels.map(function (lv) {
       var ses = Repo.getSession(sid, lv.levelId);
       var ev = evaluateLevelStarRating(ses.logs, ses.starCode, ses.remedialPassed, lv.levelId);
+      var serverStat = getServerStat(sid, lv.levelId);
+      if (serverStat) {
+        ev.code = serverStat.star_rating || ev.code;
+        ev.studentLabel = getServerStarLabel(serverStat, ev.studentLabel);
+        if (serverStat.level_completed) ev.missingReasons = [];
+      }
       var s1Acc = getStrictStageAccess(sid, lv.levelId, "X-1");
       var s2Acc = getStrictStageAccess(sid, lv.levelId, "X-2");
       var lvDone = Boolean(s1Acc.completed && s2Acc.completed);
@@ -795,7 +1067,18 @@
     selectedLevelId: "CH2-L1"
   };
 
+  function setStudentContext(userId, statistics) {
+    activeStudentId = userId ? String(userId) : null;
+    serverStatisticsByLevel = {};
+    (Array.isArray(statistics) ? statistics : []).forEach(function (row) {
+      if (row && row.level_id) serverStatisticsByLevel[row.level_id] = row;
+    });
+    if (activeStudentId) replayPendingLearningAnswers(activeStudentId);
+  }
+
   function getSid() {
+    // 已登入時一律以 Supabase Auth UID 作為本機進度命名空間，避免共用裝置跨帳號混用。
+    if (activeStudentId) return activeStudentId;
     var el = document.getElementById("stuInp");
     var d = el && el.value ? el.value.trim() : "";
     var s = (localStorage.getItem("edu_stu") || "").trim();
@@ -805,6 +1088,9 @@
   function renderLevelSummary(lv, s, starEv) {
     var ch = CHAPTERS[lv.chapterId];
     var chComp = getChapterCompletion(s.studentId, lv.chapterId);
+    var x1Completed = getStrictStageAccess(s.studentId, lv.levelId, "X-1").completed;
+    var x2Completed = getStrictStageAccess(s.studentId, lv.levelId, "X-2").completed;
+    var levelCompleted = x1Completed && x2Completed;
     var subHtml = lv.subConcepts.map(function (sc) {
       var st = s.subConceptMastery[sc] || "尚未檢驗完成";
       return "<li><strong>" + esc(sc) + "</strong>：" + esc(st) + "</li>";
@@ -825,7 +1111,7 @@
       "<h4 class=\"te-card-title\">階段 6：學習總結（本 Level 總結）</h4>" +
       "<div class=\"te-sub-box\">" +
       "<strong>目前星球精熟度：</strong>" + esc(starEv.studentLabel) + "<br>" +
-      "<strong>關卡狀態：</strong>觀念學習（" + (s.stage1Completed ? "已完成" : "未完成") + "）｜刷題練習（" + (s.stage2Completed ? "已完成" : "進行中") + "）｜本 Level（" + (s.levelCompleted ? "已完成" : "未完成") + "）<br>" +
+      "<strong>關卡狀態：</strong>觀念學習（" + (x1Completed ? "已完成" : "未完成") + "）｜刷題練習（" + (x2Completed ? "已完成" : "進行中") + "）｜本 Level（" + (levelCompleted ? "已完成" : "未完成") + "）<br>" +
       (starEv.missingReasons.length ? "<strong>待補齊評量依據：</strong>" + esc(starEv.missingReasons.join("；")) + "<br>" : "") +
       "<strong>正式定義：</strong>" + formatMathForStudent(lv.lesson.definition) + "<br>" +
       "<strong>公式推導與使用條件：</strong>" + formatMathForStudent(lv.lesson.derivation) + "｜" + formatMathForStudent(lv.lesson.conditions) + "<br>" +
@@ -916,32 +1202,57 @@
     return renderLevelSummary(lv, s, starEv);
   }
 
-  function processSubmit(sid, levelId, ans) {
+  async function processSubmit(sid, levelId, ans) {
     var lv = LEVEL_MAP[levelId] || LEVELS[0];
     var s = Repo.getSession(sid, lv.levelId);
 
     if (s.stageCode === "X-1" && s.subStep === 2) {
-      var gRes = SemanticHook.analyzeExplanation({ nodeId: lv.legacyNodeId, stage: 2, answer: ans });
+      if (!activeStudentId || String(sid || "") !== activeStudentId) {
+        s.lastFeedback = "請先登入有效的學生帳號，才能使用伺服器 AI 引導評量。";
+        s.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(s);
+        return;
+      }
+      var pendingGuide = readLearningOutbox(activeStudentId).find(function (entry) {
+        return entry && entry.log && entry.log.stageType === "guide"
+          && entry.log.questionId === lv.guide.questionId;
+      });
+      if (pendingGuide) {
+        var pendingResult = await flushLearningSync(lv.levelId);
+        s = Repo.getSession(sid, lv.levelId);
+        if (!pendingResult.ok) {
+          s.lastFeedback = "上一筆引導答案仍在等待 AI 評量同步，請稍後再試。原因：" + pendingResult.message;
+          s.lastFeedbackType = "guide";
+          Repo.saveAndSyncMastery(s);
+        }
+        return;
+      }
+      var safeAnswer = redactGuideAnswerForStorage(ans);
+      if (safeAnswer.trim().length < 8) {
+        s.lastFeedback = "答案過短或包含需遮蔽的識別資訊，請只保留數學推理內容後再送出。";
+        s.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(s);
+        return;
+      }
       var priorG = s.logs.filter(function (x) { return x.questionId === lv.guide.questionId; }).length;
-      s = Repo.appendLog(sid, lv.levelId, {
+      var previousHint = Number(s.hintLevelIndex || 0);
+      var guideLog = {
+        clientSubmissionId: createClientSubmissionId(),
         chapterId: lv.chapterId, levelId: lv.levelId, knowledgeNode: lv.legacyNodeId,
         questionId: lv.guide.questionId, stageType: "guide", subConcept: lv.subConcepts[0],
-        dimension: lv.guide.dimension, studentAnswer: ans, isCorrect: gRes.ok,
-        verdict: gRes.verdict, errorCode: gRes.errorCode,
-        hintLevel: gRes.ok ? null : getNextHint(s), isFirstTry: priorG === 0,
-        isRemedial: false, completedAt: new Date().toISOString()
-      });
-      if (gRes.ok) {
-        s.hintLevelIndex = 0;
-        s.subStep = 3;
-        s.checkIndex = 0;
-        s.lastFeedback = "引導說明清楚！現在進入「3. 理解檢查」，逐一檢驗本 Level 子觀念。";
-        s.lastFeedbackType = "ok";
-      } else {
-        s.lastFeedback = (gRes.supplementPrompt || "請再補充說明你的理由。") + "【提示 " + (lv.hints.H1 || "") + "】";
+        dimension: lv.guide.dimension, studentAnswer: safeAnswer, isCorrect: false,
+        verdict: "pending_ai", errorCode: null,
+        hintLevel: previousHint > 0 ? "H" + Math.min(previousHint, 4) : null,
+        isFirstTry: priorG === 0, isRemedial: false, completedAt: new Date().toISOString()
+      };
+      Repo.appendLog(sid, lv.levelId, guideLog);
+      var syncResult = await queueLearningAnswer(lv.levelId, guideLog, activeStudentId, false);
+      s = Repo.getSession(sid, lv.levelId);
+      if (!syncResult.ok) {
+        s.lastFeedback = "答案已暫存在本機，但 AI 評量服務目前無法完成同步；請稍後重試。原因：" + syncResult.message;
         s.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(s);
       }
-      Repo.saveAndSyncMastery(s);
       return;
     }
 
@@ -1037,7 +1348,7 @@
         chapterId: lv.chapterId, levelId: lv.levelId, knowledgeNode: lv.legacyNodeId,
         questionId: lv.levelId + "-REM-" + rIdx, stageType: "remedial", subConcept: lv.subConcepts[0],
         dimension: "應用能力", studentAnswer: ans, isCorrect: okR,
-        verdict: okR ? "pass" : "incorrect", errorCode: okR ? null : lastErr,
+        verdict: okR ? "pass" : "incorrect", errorCode: lastErr,
         hintLevel: okR ? null : getNextHint(s), isFirstTry: true, isRemedial: true,
         completedAt: new Date().toISOString()
       });
@@ -1091,6 +1402,12 @@
     }
 
     var starEv = Repo.saveAndSyncMastery(s);
+    var serverStat = getServerStat(sid, lv.levelId);
+    if (serverStat) {
+      starEv.code = serverStat.star_rating || starEv.code;
+      starEv.studentLabel = getServerStarLabel(serverStat, starEv.studentLabel);
+      if (serverStat.level_completed) starEv.missingReasons = [];
+    }
     var chComp = getChapterCompletion(sid, ch.chapterId);
 
     var chTabs = Object.keys(CHAPTERS).map(function (cid) {
@@ -1181,7 +1498,7 @@
 
     var subBtn = document.getElementById("te-submit");
     var ansInp = document.getElementById("te-ans");
-    if (subBtn && ansInp) subBtn.addEventListener("click", function () {
+    if (subBtn && ansInp) subBtn.addEventListener("click", async function () {
       var val = ansInp.value.trim();
       if (!val) {
         var cs = Repo.getSession(getSid(), lv.levelId);
@@ -1191,7 +1508,16 @@
         renderEngine(container, lv.levelId);
         return;
       }
-      processSubmit(getSid(), lv.levelId, val);
+      subBtn.disabled = true;
+      subBtn.textContent = "正在評量…";
+      try {
+        await processSubmit(getSid(), lv.levelId, val);
+      } catch (submitError) {
+        var failed = Repo.getSession(getSid(), lv.levelId);
+        failed.lastFeedback = "送出時發生錯誤；若已登入，答案仍會保留待重試。請稍後再試。";
+        failed.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(failed);
+      }
       renderEngine(container, lv.levelId);
     });
 
@@ -1223,14 +1549,61 @@
     });
 
     var compLv = document.getElementById("te-complete-level");
-    if (compLv) compLv.addEventListener("click", function () {
+    if (compLv) compLv.addEventListener("click", async function () {
       var cur = Repo.getSession(getSid(), lv.levelId);
       var ev = Repo.saveAndSyncMastery(cur);
-      cur.lastFeedback = cur.levelCompleted
-        ? ("已更新「" + lv.title + "」學習總結與星球精熟度：" + ev.studentLabel + "。")
-        : ("目前尚未完成本 Level 正式條件（" + ev.detail + "），已同步最新狀態。");
-      cur.lastFeedbackType = cur.levelCompleted ? "ok" : "guide";
+      var serverX1 = getStrictStageAccess(getSid(), lv.levelId, "X-1");
+      var serverX2 = getStrictStageAccess(getSid(), lv.levelId, "X-2");
+      cur.stage1Completed = serverX1.completed;
+      cur.stage2Completed = serverX2.completed;
+      cur.levelCompleted = serverX1.completed && serverX2.completed;
+      if (!cur.levelCompleted) {
+        cur.lastFeedback = "目前尚未完成本 Level 正式條件（" + ev.detail + "），請完成必要學習活動後再確認。";
+        cur.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(cur);
+        renderEngine(container, lv.levelId);
+        return;
+      }
+
+      cur.lastFeedback = "正在同步學習紀錄與精熟程度…";
+      cur.lastFeedbackType = "guide";
       Repo.saveAndSyncMastery(cur);
+      renderEngine(container, lv.levelId);
+
+      var syncModule = window.LearningStatsAndResourcesModule;
+      if (!syncModule || typeof syncModule.commitLearningSummary !== "function") {
+        cur.lastFeedback = "本機學習狀態已更新，但伺服器同步模組尚未載入；請重新整理後再試。";
+        cur.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(cur);
+        renderEngine(container, lv.levelId);
+        return;
+      }
+
+      try {
+        var result = await syncModule.commitLearningSummary({
+          levelId: lv.levelId,
+          chapterId: lv.chapterId,
+          stageId: "X-2",
+          markStageCompleted: true
+        });
+        if (result && result.ok) {
+          cur.lastFeedback = "已成功儲存「" + lv.title + "」學習紀錄與精熟程度：" + ev.studentLabel + "。" +
+            (result.statsWarning ? " " + result.statsWarning : "");
+          cur.lastFeedbackType = "ok";
+          Repo.saveAndSyncMastery(cur);
+          window.dispatchEvent(new CustomEvent("star-learning:summary-committed", {
+            detail: { levelId: lv.levelId, chapterId: lv.chapterId, stats: result.stats }
+          }));
+        } else {
+          cur.lastFeedback = "本機學習狀態已更新，但伺服器同步失敗：" + ((result && result.message) || "未知錯誤") + "。請稍後重試。";
+          cur.lastFeedbackType = "guide";
+          Repo.saveAndSyncMastery(cur);
+        }
+      } catch (syncError) {
+        cur.lastFeedback = "本機學習狀態已更新，但伺服器同步時發生連線錯誤：" + (syncError && syncError.message ? syncError.message : "請稍後重試") + "。";
+        cur.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(cur);
+      }
       renderEngine(container, lv.levelId);
     });
 
@@ -1261,6 +1634,8 @@
     getChapterCompletion: getChapterCompletion,
     getStrictStageAccess: getStrictStageAccess,
     isStageFormallyCompleted: isStageFormallyCompleted,
+    flushLearningSync: flushLearningSync,
+    setStudentContext: setStudentContext,
     formatMathForStudent: formatMathForStudent,
     getStudentTitle: function (id) {
       var lv = LEVELS.find(function (x) { return x.levelId === id || x.legacyNodeId === id; });

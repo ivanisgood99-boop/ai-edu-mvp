@@ -17,8 +17,10 @@
       <div class="sh-nav-bar" id="mainNavBar">
         <button type="button" class="sh-nav-btn" data-nav="studentHome">學生首頁</button>
         <button type="button" class="sh-nav-btn" data-nav="learningMap">學習地圖</button>
+        <button type="button" class="sh-nav-btn" data-nav="rewards">星際收藏</button>
         <button type="button" class="sh-nav-btn" data-nav="teacher">教師班級</button>
         <button type="button" class="sh-nav-btn" data-nav="admin">平台管理</button>
+        <button type="button" class="sh-nav-btn" id="globalLogoutBtn" hidden>登出</button>
       </div>
     </nav>
 
@@ -34,11 +36,12 @@
   <script src="./auth-system.js"></script>
   <script src="./learning-stats-and-resources.js"></script>
   <script src="./teaching-engine.js"></script>
+  <script src="./role-dashboards.js"></script>
   <script src="./student-home.js"></script>
   <script>
     (function () {
       var NAV_STORAGE_KEY = "ai_edu_active_nav_v1";
-      var VALID_NAVS = ["studentHome", "learningMap", "teacher", "admin"];
+      var VALID_NAVS = ["studentHome", "learningMap", "rewards", "teacher", "admin"];
 
       function readSavedNav() {
         try {
@@ -67,12 +70,63 @@
       }
 
       window.__onStudentSubViewChange = function (subKey) {
+        if (subKey === "guest") {
+          applyNavVisibility(null);
+          syncNavVisualState("studentHome");
+          return;
+        }
         if (VALID_NAVS.indexOf(subKey) !== -1) {
+          if (subKey === "teacher" || subKey === "admin") applyNavVisibility(subKey);
+          else applyNavVisibility("student");
           syncNavVisualState(subKey);
         }
       };
 
-      function renderStage(navKey) {
+      function applyNavVisibility(role) {
+        var allowed = role === "admin"
+          ? ["admin", "teacher"]
+          : role === "teacher"
+            ? ["teacher"]
+            : role === "student"
+              ? ["studentHome", "learningMap", "rewards"]
+              : ["studentHome"];
+        document.querySelectorAll("#mainNavBar .sh-nav-btn").forEach(function (btn) {
+          if (btn.id === "globalLogoutBtn") {
+            btn.hidden = !role;
+            return;
+          }
+          var key = btn.getAttribute("data-nav");
+          btn.hidden = allowed.indexOf(key) === -1;
+        });
+      }
+
+      var navRenderSequence = 0;
+      async function renderStage(navKey) {
+        var sequence = ++navRenderSequence;
+        var auth = window.AuthSystemModule;
+        var profile = null;
+        try {
+          if (auth && typeof auth.getCurrentProfile === "function") {
+            profile = await auth.getCurrentProfile();
+          }
+        } catch (e) {
+          profile = null;
+        }
+        if (sequence !== navRenderSequence) return;
+
+        var role = profile && profile.account_status === "active" ? profile.role : null;
+        applyNavVisibility(role);
+        var allowed = role === "admin"
+          ? ["admin", "teacher"]
+          : role === "teacher"
+            ? ["teacher"]
+            : role === "student"
+              ? ["studentHome", "learningMap", "rewards"]
+              : ["studentHome"];
+        if (allowed.indexOf(navKey) === -1) {
+          navKey = role === "admin" ? "admin" : role === "teacher" ? "teacher" : "studentHome";
+        }
+
         syncNavVisualState(navKey);
         var stage = document.getElementById("mainStage");
         if (!stage) return;
@@ -87,25 +141,28 @@
           return;
         }
 
-        if (currentNav === "teacher") {
-          stage.innerHTML =
-            "<div class=\"sh-panel\">" +
-            "<h2 style=\"margin:0 0 8px\">教師班級</h2>" +
-            "<p style=\"margin:0;font-size:13px;color:#cbd5e1\">教師班級檢視與授權班級名單功能依正式帳號與權限驗證運作，目前未開啟未授權資料。</p>" +
-            "</div>";
+        if (currentNav === "rewards" || currentNav === "teacher" || currentNav === "admin") {
+          if (window.RoleDashboardModule && typeof window.RoleDashboardModule.render === "function") {
+            window.RoleDashboardModule.render(stage, currentNav);
+          } else {
+            stage.innerHTML = "<div class=\"sh-panel\">功能模組尚未載入，請重新整理。</div>";
+          }
           return;
         }
-
-        stage.innerHTML =
-          "<div class=\"sh-panel\">" +
-          "<h2 style=\"margin:0 0 8px\">平台管理</h2>" +
-          "<p style=\"margin:0;font-size:13px;color:#cbd5e1\">平台管理操作需透過受信任後端與管理權限驗證，前端不寫死管理員密鑰。</p>" +
-          "</div>";
       }
 
-      document.getElementById("mainNavBar").addEventListener("click", function (ev) {
+      document.getElementById("mainNavBar").addEventListener("click", async function (ev) {
         var btn = ev.target && ev.target.closest ? ev.target.closest(".sh-nav-btn") : null;
         if (!btn) return;
+        if (btn.id === "globalLogoutBtn") {
+          ev.preventDefault();
+          try {
+            if (window.AuthSystemModule) await window.AuthSystemModule.signOutStudent();
+          } finally {
+            renderStage("studentHome");
+          }
+          return;
+        }
         var targetNav = btn.getAttribute("data-nav");
         if (targetNav) renderStage(targetNav);
       });

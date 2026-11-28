@@ -1,0 +1,38 @@
+name: Validate JavaScript
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    name: JavaScript syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check changed application scripts
+        run: |
+          node --check curriculum-data.js
+          node --check auth-system.js
+          node --check learning-stats-and-resources.js
+          node --check student-home.js
+          node --check teaching-engine.js
+          node --check role-dashboards.js
+      - name: Test curriculum and server progress integration
+        run: node --test tests/*.test.js
+      - name: Set up Deno for Supabase Edge Function checks
+        uses: denoland/setup-deno@v2
+      - name: Type-check server-side AI evaluator
+        run: deno check --no-lock supabase/functions/evaluate-guide-answer/index.ts
