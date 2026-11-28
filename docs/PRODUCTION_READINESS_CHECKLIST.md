@@ -62,3 +62,11 @@
 - 不得把 JavaScript 單元測試當成真實瀏覽器 E2E。
 - 不得把 guide 的 submitted 狀態宣稱為 AI 已理解學生答案。
 - 不得把尚無目錄資料或完整後端閉環的 PK、抽獎、成就功能宣稱為已完成。
+
+
+## AI 引導評量更新（2026-11-28）
+
+- 伺服器端評量程式、10 個私有 rubric、service-role-only RPC、學生配額及 Deno 型別檢查已完成開發分支驗證。
+- 目前尚未設定 `OPENAI_API_KEY`、尚未部署 Edge Function、尚未套用 AI 評量 migration；因此不可把 AI 評分標示為正式啟用。
+- 啟用前需先完成模型輸出品質抽樣、教師審查、資料處理告知與保存期限確認，以及家長／監護人對任何可能產生費用之 API 使用的同意。
+- 詳細測試矩陣見 `docs/AI_GUIDE_EVALUATION_TEST_PLAN.md`。
