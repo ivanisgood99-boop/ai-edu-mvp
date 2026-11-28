@@ -26,6 +26,9 @@ test("all ten current guide questions have server-owned private rubrics", () => 
   assert.ok(migration.includes("ALTER TABLE private.learning_guide_rubrics ENABLE ROW LEVEL SECURITY"));
   assert.ok(migration.includes("REVOKE ALL ON TABLE private.learning_guide_rubrics FROM PUBLIC, anon, authenticated"));
   assert.ok(migration.includes("GRANT SELECT ON TABLE private.learning_guide_rubrics TO service_role"));
+  assert.ok(migration.includes("將 x=a、y=b 代入直線方程式"));
+  assert.ok(migration.includes("比較點到圓心的距離 CP 與半徑 r"));
+  assert.ok(migration.includes("同類項具有相同的變數與相同次方"));
 });
 
 test("only service role can read rubrics, reserve quota, and persist guide evaluations", () => {
