@@ -205,6 +205,14 @@
     });
   }
 
+  function redactGuideAnswerForStorage(value) {
+    return String(value || "")
+      .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, "[已遮蔽電子郵件]")
+      .replace(/\\b[A-Z][12]\\d{8}\\b/gi, "[已遮蔽識別碼]")
+      .replace(/\\b09\\d{2}[- ]?\\d{3}[- ]?\\d{3}\\b/g, "[已遮蔽電話]")
+      .replace(/\\b0[2-8][-\\s]?\\d{3,4}[-\\s]?\\d{4}\\b/g, "[已遮蔽電話]");
+  }
+
   function applyGuideEvaluationToSession(uid, levelId, log, payload) {
     var evaluation = payload && payload.evaluation ? payload.evaluation : payload;
     if (!uid || !log || !evaluation || !["pass", "partial", "incorrect", "unclear"].includes(evaluation.verdict)) return;
@@ -1219,13 +1227,20 @@
         }
         return;
       }
+      var safeAnswer = redactGuideAnswerForStorage(ans);
+      if (safeAnswer.trim().length < 8) {
+        s.lastFeedback = "答案過短或包含需遮蔽的識別資訊，請只保留數學推理內容後再送出。";
+        s.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(s);
+        return;
+      }
       var priorG = s.logs.filter(function (x) { return x.questionId === lv.guide.questionId; }).length;
       var previousHint = Number(s.hintLevelIndex || 0);
       var guideLog = {
         clientSubmissionId: createClientSubmissionId(),
         chapterId: lv.chapterId, levelId: lv.levelId, knowledgeNode: lv.legacyNodeId,
         questionId: lv.guide.questionId, stageType: "guide", subConcept: lv.subConcepts[0],
-        dimension: lv.guide.dimension, studentAnswer: ans, isCorrect: false,
+        dimension: lv.guide.dimension, studentAnswer: safeAnswer, isCorrect: false,
         verdict: "pending_ai", errorCode: null,
         hintLevel: previousHint > 0 ? "H" + Math.min(previousHint, 4) : null,
         isFirstTry: priorG === 0, isRemedial: false, completedAt: new Date().toISOString()
