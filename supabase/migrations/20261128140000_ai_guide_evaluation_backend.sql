@@ -55,6 +55,85 @@ ON CONFLICT (level_id) DO UPDATE SET
   is_active = EXCLUDED.is_active,
   updated_at = now();
 
+-- Server-side quota limits protect student accounts and the model budget.
+CREATE TABLE IF NOT EXISTS private.learning_guide_ai_usage (
+  student_id uuid PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+  minute_bucket timestamptz NOT NULL DEFAULT date_trunc('minute', now()),
+  minute_count integer NOT NULL DEFAULT 0 CHECK (minute_count >= 0),
+  day_bucket date NOT NULL DEFAULT CURRENT_DATE,
+  day_count integer NOT NULL DEFAULT 0 CHECK (day_count >= 0),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE private.learning_guide_ai_usage ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE private.learning_guide_ai_usage FROM PUBLIC, anon, authenticated;
+GRANT USAGE ON SCHEMA private TO service_role;
+
+CREATE OR REPLACE FUNCTION public.reserve_learning_guide_ai_quota(p_student_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $function$
+DECLARE
+  v_now timestamptz := now();
+  v_minute timestamptz := date_trunc('minute', now());
+  v_day date := CURRENT_DATE;
+  v_row private.learning_guide_ai_usage%ROWTYPE;
+BEGIN
+  IF current_setting('request.jwt.claim.role', true) IS DISTINCT FROM 'service_role' THEN
+    RAISE EXCEPTION 'Forbidden: service role required';
+  END IF;
+  IF p_student_id IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.profiles p
+    WHERE p.id = p_student_id AND p.role = 'student' AND p.account_status = 'active'
+  ) THEN
+    RAISE EXCEPTION 'Forbidden: active student account required';
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_student_id::text || '|guide-ai-quota', 0));
+  INSERT INTO private.learning_guide_ai_usage(student_id)
+  VALUES (p_student_id)
+  ON CONFLICT (student_id) DO NOTHING;
+
+  SELECT * INTO v_row
+  FROM private.learning_guide_ai_usage
+  WHERE student_id = p_student_id
+  FOR UPDATE;
+
+  IF v_row.minute_bucket <> v_minute THEN
+    v_row.minute_bucket := v_minute;
+    v_row.minute_count := 0;
+  END IF;
+  IF v_row.day_bucket <> v_day THEN
+    v_row.day_bucket := v_day;
+    v_row.day_count := 0;
+  END IF;
+
+  IF v_row.minute_count >= 12 OR v_row.day_count >= 120 THEN
+    RETURN jsonb_build_object(
+      'allowed', false,
+      'retry_after_seconds', CASE
+        WHEN v_row.minute_count >= 12 THEN GREATEST(1, 60 - EXTRACT(SECOND FROM v_now)::integer)
+        ELSE 3600
+      END
+    );
+  END IF;
+
+  UPDATE private.learning_guide_ai_usage
+  SET minute_bucket = v_row.minute_bucket,
+      minute_count = v_row.minute_count + 1,
+      day_bucket = v_row.day_bucket,
+      day_count = v_row.day_count + 1,
+      updated_at = v_now
+  WHERE student_id = p_student_id;
+
+  RETURN jsonb_build_object('allowed', true);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.reserve_learning_guide_ai_quota(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.reserve_learning_guide_ai_quota(uuid) TO service_role;
+
 -- The Edge Function retrieves rubrics through a service-only RPC; the private
 -- schema itself is never exposed through the public Data API.
 CREATE OR REPLACE FUNCTION public.get_learning_guide_rubric(
