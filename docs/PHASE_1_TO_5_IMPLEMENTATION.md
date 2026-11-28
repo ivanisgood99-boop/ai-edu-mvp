@@ -165,7 +165,7 @@
 - 作答一旦由登入學生送出，前端會先將作答與 client-generated UUID 寫入 UID 專屬 localStorage outbox，再嘗試同步；網路失敗或頁面重新載入後，待同步紀錄仍可由同一帳號恢復。
 - 登入學生載入學習上下文時會自動重播待同步作答；提交學習總結前也會先重試該 Level 的 outbox。若仍有待同步紀錄，總結不會被當成正式完成。
 - 每筆作答都使用固定的 client submission UUID；網路逾時後即使伺服器已完成寫入、瀏覽器卻未收到回應，重試仍使用相同 UUID。
-- 新增待部署 migration `20261129100000_idempotent_learning_answer_submissions.sql`：建立每位學生的 submission UUID 唯一索引，並新增獨立 RPC `record_learning_answer_idempotent`。相同 UUID 與相同 payload 會回傳既有紀錄，不會再次增加 attempt；同 UUID 不同 payload 會拒絕。
+- 新增待部署 migration `20261128130000_idempotent_learning_answer_submissions.sql`：建立每位學生的 submission UUID 唯一索引，並新增獨立 RPC `record_learning_answer_idempotent`。相同 UUID 與相同 payload 會回傳既有紀錄，不會再次增加 attempt；同 UUID 不同 payload 會拒絕。
 - 新 RPC 另行檢查 active student，並委派既有的伺服器題目驗證與作答寫入函式；RPC 使用獨立名稱，避免 Supabase Data API 不支援函式多載時產生呼叫歧義。
 - Node 測試涵蓋：同步失敗後重載頁面、重試沿用同一 UUID、成功後清除 outbox、不同 UID 的 outbox 隔離，以及 migration 的唯一鍵／權限／重試契約。
 - 目前只在開發分支；migration 尚未套用正式 Supabase。CI 與 SQL 交易回滾測試通過前，不宣稱正式環境已具備此保證。
