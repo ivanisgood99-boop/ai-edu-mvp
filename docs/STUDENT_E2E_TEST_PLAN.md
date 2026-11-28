@@ -129,3 +129,24 @@
 2. 確認 `last_rocket_grant_date` 仍依伺服器 `Asia/Taipei` 的每日 04:00 規則計算，不受參數影響。
 3. 確認 anon 對同步與使用補給 RPC 的 EXECUTE 為 false，authenticated 為 true。
 4. 確認匿名呼叫被拒絕、停用帳號呼叫被拒絕，且交易回滾後資源餘額、補給日期與帳本筆數均不變。
+
+
+## 11. 課程來源與跨裝置進度驗收
+
+| 編號 | 測試項目 | 操作 | 預期結果 |
+|---|---|---|---|
+| CUR-01 | 地圖與教學引擎一致 | 比對每個 Chapter 的 Level ID 與順序 | 地圖只顯示教學引擎實際存在的 Level，章節名稱一致 |
+| CUR-02 | 預設課程 | 新學生登入後開啟學習地圖 | 預設顯示第二章「直線與圓」 |
+| PROG-01 | 跨裝置 X-1 還原 | 帳號 A 在裝置 1 完成 X-1，於裝置 2 登入並開啟同一 Level | 伺服器已保存 X-1 時，裝置 2 可進入 X-2 |
+| PROG-02 | 跨帳號隔離 | 帳號 A 完成 X-1 後登出，帳號 B 登入同一裝置 | B 不會繼承 A 的 X-1 解鎖或精熟度 |
+| PROG-03 | 伺服器精熟度 | 在另一裝置開啟已完成的 Level 總結 | 顯示 learning_statistics 的伺服器星級與完成狀態 |
+
+## 12. 帳號停用與學習 RPC
+
+| 編號 | 測試項目 | 操作 | 預期結果 |
+|---|---|---|---|
+| AUTH-11 | Active student 作答 | 有效學生呼叫 `record_learning_answer` | 正常寫入本人作答紀錄並重算統計 |
+| AUTH-12 | Suspended student 作答 | 停用帳號直接呼叫 `record_learning_answer` | 資料庫拒絕，不新增作答紀錄 |
+| AUTH-13 | Suspended student 重算 | 停用帳號直接呼叫 `save_summary_and_recompute_level` | 資料庫拒絕，不更新統計 |
+| AUTH-14 | 非學生角色 | active teacher/admin 直接呼叫學生作答 RPC | 資料庫拒絕 |
+| AUTH-15 | 登入狀態更新 | 管理員停用學生後，該學生仍保持既有登入 session | 下一次受保護資料請求與 RPC 均被資料庫拒絕，前端回到未授權狀態 |
