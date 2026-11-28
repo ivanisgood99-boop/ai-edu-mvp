@@ -143,3 +143,11 @@
 - 已透過受保護預覽讀取 HTML、`student-home.js`、`teaching-engine.js` 與 `curriculum-data.js`，確認預覽提供新課程來源與伺服器進度程式碼；這不是互動瀏覽器 E2E。
 
 - Supabase Security Advisor 仍回報 Leaked Password Protection 未啟用；另有 default-deny RLS 無政策提示與必要 authenticated SECURITY DEFINER RPC 警示。這些需逐項審核；本輪未更動正式 Auth 設定或權限。
+
+
+## 教師／管理員非同步畫面競態修正（2026-11-28）
+
+- 教師班級、管理員與星際收藏頁面會發出多筆非同步資料請求；使用者快速切換頁面時，較慢的舊請求可能在新頁面之後完成並覆蓋目前畫面。
+- 新增 render sequence ID；每次切換頁面都使前一代請求失效，所有資料讀取與操作完成後都必須確認仍屬於目前頁面，才可更新 DOM 或顯示錯誤。
+- 教師建立班級、學生加入班級、教師申請、管理員審核／停用帳號、角色造型購買／裝備等操作也加上頁面版本檢查，避免舊頁面操作結果覆蓋新頁面。
+- `role-dashboards.js` 通過 JavaScript 語法解析；完整 CI 將在此提交後重跑。真實瀏覽器快速切頁與慢網路測試仍列入 E2E。
