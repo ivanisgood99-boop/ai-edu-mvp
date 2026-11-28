@@ -23,24 +23,106 @@
 
   var STORE_KEY = "ai_edu_phase2_records_v4";
   var MASTERY_SYNC_KEY = "ai_edu_level_mastery_v1";
+  var OUTBOX_PREFIX = "ai_edu_answer_outbox_v1:";
   var learningSyncQueues = {};
+  var queuedSubmissionPromises = {};
   var activeStudentId = null;
   var serverStatisticsByLevel = {};
 
-  function queueLearningAnswer(levelId, log) {
+  function createClientSubmissionId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      return window.crypto.randomUUID();
+    }
+    var bytes = [];
+    if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+      var raw = new Uint8Array(16);
+      window.crypto.getRandomValues(raw);
+      bytes = Array.from(raw);
+    } else {
+      for (var i = 0; i < 16; i += 1) bytes.push(Math.floor(Math.random() * 256));
+      var seed = Date.now().toString(16);
+      for (var j = 0; j < seed.length && j < 12; j += 1) bytes[j] = parseInt(seed[j], 16) || 0;
+    }
+    bytes[6] = (bytes[6] & 15) | 64;
+    bytes[8] = (bytes[8] & 63) | 128;
+    var hex = bytes.map(function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
+    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
+  }
+
+  function outboxStorageKey(uid) {
+    return OUTBOX_PREFIX + String(uid || "");
+  }
+
+  function readLearningOutbox(uid) {
+    try {
+      var raw = localStorage.getItem(outboxStorageKey(uid));
+      var parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function writeLearningOutbox(uid, entries) {
+    localStorage.setItem(outboxStorageKey(uid), JSON.stringify(entries));
+  }
+
+  function persistLearningOutboxEntry(uid, levelId, log) {
+    if (!uid || !log || !log.clientSubmissionId) return;
+    var entries = readLearningOutbox(uid);
+    var existing = entries.findIndex(function (item) {
+      return item && item.clientSubmissionId === log.clientSubmissionId;
+    });
+    var entry = {
+      clientSubmissionId: log.clientSubmissionId,
+      levelId: String(levelId),
+      log: log,
+      createdAt: new Date().toISOString()
+    };
+    if (existing >= 0) entries[existing] = entry;
+    else entries.push(entry);
+    writeLearningOutbox(uid, entries);
+  }
+
+  function removeLearningOutboxEntry(uid, submissionId) {
+    var entries = readLearningOutbox(uid).filter(function (item) {
+      return item && item.clientSubmissionId !== submissionId;
+    });
+    writeLearningOutbox(uid, entries);
+  }
+
+  function queueLearningAnswer(levelId, log, studentId, persist) {
+    var uid = String(studentId || activeStudentId || "");
     var key = String(levelId || "");
-    if (!key) return Promise.resolve({ ok: false, message: "缺少 Level ID" });
-    if (!learningSyncQueues[key]) learningSyncQueues[key] = { tail: Promise.resolve(), errors: {} };
-    var queue = learningSyncQueues[key];
+    if (!uid || !key || !log) return Promise.resolve({ ok: false, message: "缺少登入者或 Level ID" });
+    if (!log.clientSubmissionId) log.clientSubmissionId = createClientSubmissionId();
+
+    try {
+      if (persist !== false) persistLearningOutboxEntry(uid, key, log);
+    } catch (storageError) {
+      return Promise.resolve({
+        ok: false,
+        message: "無法將待同步作答安全保存於本機，請確認裝置儲存空間後再試。"
+      });
+    }
+
+    var submissionKey = uid + "::" + log.clientSubmissionId;
+    if (queuedSubmissionPromises[submissionKey]) return queuedSubmissionPromises[submissionKey];
+
+    var queueKey = uid + "::" + key;
+    if (!learningSyncQueues[queueKey]) {
+      learningSyncQueues[queueKey] = { tail: Promise.resolve(), errors: {} };
+    }
+    var queue = learningSyncQueues[queueKey];
 
     var next = queue.tail.catch(function () {}).then(async function () {
       try {
         if (!window.AuthSystemModule || typeof window.AuthSystemModule.getCurrentSession !== "function") {
-          return { ok: true, skipped: true, message: "目前沒有登入模組，僅保留本機紀錄。" };
+          throw new Error("登入狀態尚未就緒；作答已保留，稍後會自動重試。");
         }
         var auth = await window.AuthSystemModule.getCurrentSession();
-        if (!auth || !auth.user || !auth.user.id) {
-          return { ok: true, skipped: true, message: "訪客模式僅保留本機紀錄。" };
+        if (!auth || !auth.user || String(auth.user.id) !== uid) {
+          throw new Error("目前登入帳號與待同步作答不一致；作答已保留，切回原帳號後會重試。");
         }
         var client = window.sbClient;
         if (!client && window.supabase && window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
@@ -49,11 +131,12 @@
           });
           window.sbClient = client;
         }
-        if (!client) throw new Error("Supabase 用戶端尚未初始化");
+        if (!client) throw new Error("Supabase 用戶端尚未初始化；作答已保留，稍後會重試。");
 
         var type = log.stageType || (log.isRemedial ? "remedial" : "practice");
         var hint = /^H[1-4]$/.test(String(log.hintLevel || "")) ? Number(String(log.hintLevel).slice(1)) : 0;
         var response = await client.rpc("record_learning_answer", {
+          p_client_submission_id: log.clientSubmissionId,
           p_chapter_id: log.chapterId || null,
           p_level_id: key,
           p_question_type: type,
@@ -66,36 +149,61 @@
           p_ai_reason: log.errorCode || log.verdict || null
         });
         if (response && response.error) throw new Error(response.error.message || "作答紀錄同步失敗");
-        delete queue.errors[String(log.questionId || "") + "::" + String(type === "remedial" ? (log.errorCode || "") : "")];
+
+        removeLearningOutboxEntry(uid, log.clientSubmissionId);
+        delete queue.errors[log.clientSubmissionId];
         window.dispatchEvent(new CustomEvent("star-learning:answer-synced", {
-          detail: { levelId: key, questionId: log.questionId, result: response ? response.data : null }
+          detail: {
+            levelId: key,
+            questionId: log.questionId,
+            clientSubmissionId: log.clientSubmissionId,
+            result: response ? response.data : null
+          }
         }));
         return { ok: true, data: response ? response.data : null };
       } catch (error) {
         var message = error && error.message ? error.message : "未知同步錯誤";
-        queue.errors[String(log.questionId || "") + "::" + String(type === "remedial" ? (log.errorCode || "") : "")] = message;
+        queue.errors[log.clientSubmissionId] = message;
         window.dispatchEvent(new CustomEvent("star-learning:sync-error", {
-          detail: { levelId: key, questionId: log.questionId, message: message }
+          detail: { levelId: key, questionId: log.questionId, clientSubmissionId: log.clientSubmissionId, message: message }
         }));
         return { ok: false, message: message };
       }
     });
+
     queue.tail = next;
+    queuedSubmissionPromises[submissionKey] = next;
+    next.then(function () {
+      delete queuedSubmissionPromises[submissionKey];
+    });
     return next;
   }
 
+  function replayPendingLearningAnswers(uid, levelId) {
+    if (!uid) return;
+    readLearningOutbox(uid).forEach(function (entry) {
+      if (!entry || !entry.log || !entry.clientSubmissionId) return;
+      if (levelId && String(entry.levelId) !== String(levelId)) return;
+      queueLearningAnswer(entry.levelId, entry.log, uid, false);
+    });
+  }
+
   async function flushLearningSync(levelId) {
-    var queue = learningSyncQueues[String(levelId || "")];
-    if (!queue) return { ok: true };
-    await queue.tail;
-    var pendingErrors = Object.values(queue.errors);
-    if (pendingErrors.length) {
-      var message = Array.from(new Set(pendingErrors)).join("；");
+    var uid = activeStudentId;
+    if (!uid) return { ok: true };
+    replayPendingLearningAnswers(uid, levelId);
+    var queue = learningSyncQueues[uid + "::" + String(levelId || "")];
+    if (queue) await queue.tail;
+    var pending = readLearningOutbox(uid).filter(function (item) {
+      return !levelId || String(item.levelId) === String(levelId);
+    });
+    var errors = queue ? Object.values(queue.errors) : [];
+    if (pending.length || errors.length) {
+      var message = Array.from(new Set(errors.length ? errors : ["仍有作答尚未同步完成。"])).join("；");
       return { ok: false, message: message };
     }
     return { ok: true };
   }
-
 
   function esc(x) {
     return String(x || "")
@@ -695,6 +803,7 @@
     },
     appendLog: function (sid, levelId, lg) {
       var s = this.getSession(sid, levelId);
+      if (!lg.clientSubmissionId) lg.clientSubmissionId = createClientSubmissionId();
       s.logs.push(lg);
       if (lg.subConcept) {
         s.subConceptMastery[lg.subConcept] = lg.isCorrect ? "已掌握" : "需加強（" + (lg.errorCode || "待釐清") + "）";
@@ -703,7 +812,9 @@
         s.remedialPassed = true;
       }
       this.saveAndSyncMastery(s);
-      queueLearningAnswer(levelId, lg);
+      if (activeStudentId && String(sid || "") === activeStudentId) {
+        queueLearningAnswer(levelId, lg, activeStudentId, true);
+      }
       return this.getSession(sid, levelId);
     }
   };
@@ -902,6 +1013,7 @@
     (Array.isArray(statistics) ? statistics : []).forEach(function (row) {
       if (row && row.level_id) serverStatisticsByLevel[row.level_id] = row;
     });
+    if (activeStudentId) replayPendingLearningAnswers(activeStudentId);
   }
 
   function getSid() {
