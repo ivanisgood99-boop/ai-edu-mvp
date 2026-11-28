@@ -565,6 +565,7 @@
       if (!target) return;
       if (opts && opts.subView) st.subView = opts.subView;
       refreshFromServer(target);
-    }
+    },
+    getChapters: getChapters
   };
 })();
