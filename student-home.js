@@ -5,8 +5,8 @@
     mode: "login",
     subView: "home",
     track: "topic",
-    chapterId: "CH-1",
-    levelId: "CH1-L1",
+    chapterId: "CH-2",
+    levelId: "CH2-L1",
     stageCode: "X-1",
     msg: "",
     msgOk: true,
@@ -30,6 +30,33 @@
   }
 
   function getChapters() {
+    // 教學引擎是課程關卡與題目的唯一執行來源；地圖必須由同一份 Level 清單產生。
+    var engine = window.TeachingEngineModule;
+    if (engine && engine.chapters && Array.isArray(engine.levels)) {
+      return Object.keys(engine.chapters).map(function (chapterId) {
+        var source = engine.chapters[chapterId];
+        var chapterLevels = engine.levels
+          .filter(function (level) { return level.chapterId === chapterId; })
+          .sort(function (a, b) { return a.levelNumber - b.levelNumber; });
+        return {
+          chapterId: source.chapterId,
+          chapterNumber: source.chapterNumber,
+          title: source.title,
+          themeClass: chapterId === "CH-2" ? "galaxy-cyan-nebula" :
+            (chapterId === "CH-3" ? "galaxy-violet-nebula" : "galaxy-amber-nebula"),
+          finalAssessment: { title: source.title + "・星系最終評量" },
+          levels: chapterLevels.map(function (level) {
+            return {
+              levelId: level.levelId,
+              levelNumber: level.levelNumber,
+              title: level.title,
+              planetStyle: level.planetStyle,
+              prerequisiteConcepts: []
+            };
+          })
+        };
+      }).sort(function (a, b) { return a.chapterNumber - b.chapterNumber; });
+    }
     if (window.CurriculumDataModule && Array.isArray(window.CurriculumDataModule.chapters)) {
       return window.CurriculumDataModule.chapters;
     }
@@ -310,9 +337,10 @@
       "</div>";
 
     var mount = document.getElementById("shOriginalEngineMount");
-    if (typeof window.__openTeachingEngineForNode === "function") {
-      window.__openTeachingEngineForNode(st.levelId, st.stageCode);
-    } else if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") {
+    if (window.TeachingEngineModule && typeof window.TeachingEngineModule.render === "function") {
+      if (typeof window.TeachingEngineModule.setStudentContext === "function") {
+        window.TeachingEngineModule.setStudentContext(st.user && st.user.id, st.stats);
+      }
       window.TeachingEngineModule.render(mount, st.levelId);
     } else if (mount) {
       mount.innerHTML = "<div style=\"font-size:13px;color:#cbd5e1\">尚未找到教學引擎模組。</div>";
@@ -335,6 +363,9 @@
       st.loadingAuth = false;
       st.user = (s && s.user) ? s.user : null;
       if (!st.user) {
+        if (window.TeachingEngineModule && typeof window.TeachingEngineModule.setStudentContext === "function") {
+          window.TeachingEngineModule.setStudentContext(null, []);
+        }
         st.stats = [];
         st.res = null;
         st.profile = null;
@@ -370,6 +401,9 @@
         if (synced) st.res = synced;
         st.stats = await window.LearningStatsAndResourcesModule.fetchStudentStatistics(st.user.id);
         if (!isLatestRequest()) return;
+      }
+      if (window.TeachingEngineModule && typeof window.TeachingEngineModule.setStudentContext === "function") {
+        window.TeachingEngineModule.setStudentContext(st.user.id, st.stats);
       }
       st.loadingData = false;
       if (st.subView === "map") renderMap(target);
