@@ -169,3 +169,11 @@
 - 新 RPC 另行檢查 active student，並委派既有的伺服器題目驗證與作答寫入函式；RPC 使用獨立名稱，避免 Supabase Data API 不支援函式多載時產生呼叫歧義。
 - Node 測試涵蓋：同步失敗後重載頁面、重試沿用同一 UUID、成功後清除 outbox、不同 UID 的 outbox 隔離，以及 migration 的唯一鍵／權限／重試契約。
 - 目前只在開發分支；migration 尚未套用正式 Supabase。CI 與 SQL 交易回滾測試通過前，不宣稱正式環境已具備此保證。
+
+
+## 作答同步 CI／預覽更新（2026-11-28）
+
+- 修正 migration 合約測試中的正規表示式錯誤後，GitHub Actions run #212 通過；8/8 Node tests passed，JavaScript syntax checks passed。
+- 將待部署 migration 時間調整為依序接在 active-student migration 後：`20261128130000_idempotent_learning_answer_submissions.sql`。
+- 最新 Vercel Preview：READY，commit `f316c17e58cd7fca8505e17e662d2cb9b078f1df`，網址 https://ai-edu-b8oxlhcka-ivanisgood99-9815.vercel.app。
+- 這個 Preview 仍是受保護預覽，不代表已完成真實瀏覽器 E2E；正式資料庫欄位與 RPC 在 rollback 後確認不存在，migration 未套用。
