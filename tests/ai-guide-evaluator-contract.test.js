@@ -85,3 +85,12 @@ test("a pending guide answer is retried before another attempt is accepted", () 
   assert.ok(submit.includes("var pendingGuide = readLearningOutbox(activeStudentId).find"));
   assert.ok(submit.includes("await flushLearningSync(lv.levelId)"));
 });
+
+
+test("guide answers redact common personal identifiers before model submission", () => {
+  assert.ok(edgeFunction.includes("function redactPersonalData(value: string)"));
+  assert.ok(edgeFunction.includes("[已遮蔽電子郵件]"));
+  assert.ok(edgeFunction.includes("[已遮蔽電話]"));
+  assert.ok(edgeFunction.includes("studentAnswer: safeAnswer"));
+  assert.ok(edgeFunction.includes("p_raw_answer: safeAnswer"));
+});
