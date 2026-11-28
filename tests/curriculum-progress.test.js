@@ -264,7 +264,7 @@ test("answer outbox is isolated by authenticated student UID", () => {
 
 test("idempotent answer migration defines a separate secured RPC and unique per-student key", () => {
   const migration = fs.readFileSync(
-    path.join(process.cwd(), "supabase/migrations/20261129100000_idempotent_learning_answer_submissions.sql"),
+    path.join(process.cwd(), "supabase/migrations/20261128130000_idempotent_learning_answer_submissions.sql"),
     "utf8"
   );
   assert.ok(migration.includes("CREATE UNIQUE INDEX IF NOT EXISTS learning_answer_logs_student_submission_uidx"));
