@@ -136,8 +136,8 @@
 
 ## 最新預覽與 CI（2026-11-28）
 
-- 最新 PR head：`94c5ab027b862b6d3ddfd3e22478d65902d4eb7f`。
-- 最新 Vercel Preview：READY，https://ai-edu-3hbijv108-ivanisgood99-9815.vercel.app；Vercel 專案啟用 SSO，尚未完成真實帳號瀏覽器 E2E。
+- 最新 PR head：`3c38d610625e9b6d1c65b409cb4e120b934c8618`。
+- 最新 Vercel Preview：READY，https://ai-edu-gtmehqq4n-ivanisgood99-9815.vercel.app；Vercel 專案啟用 SSO，尚未完成真實帳號瀏覽器 E2E。
 - 最新 GitHub Actions run #146：JavaScript syntax 與 `node --test tests/*.test.js` 均成功。
 - 最新 Netlify deploy preview：success。
 - 已透過受保護預覽讀取 HTML、`student-home.js`、`teaching-engine.js` 與 `curriculum-data.js`，確認預覽提供新課程來源與伺服器進度程式碼；這不是互動瀏覽器 E2E。
