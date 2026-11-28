@@ -1,6 +1,6 @@
 -- Durable, idempotent answer submission for browser retries.
 -- The existing 10-argument RPC remains available during rollout; the new
--- overload is used by updated clients and is safe to retry with the same UUID.
+-- separate RPC is used by updated clients and is safe to retry with the same UUID.
 
 ALTER TABLE public.learning_answer_logs
   ADD COLUMN IF NOT EXISTS client_submission_id uuid;
@@ -78,7 +78,7 @@ BEGIN
 
   -- Delegate curriculum validation, server-side answer-key checking, attempt
   -- numbering and mastery recomputation to the already hardened RPC.
-  v_result := public.record_learning_answer_idempotent(
+  v_result := public.record_learning_answer(
     p_chapter_id,
     p_level_id,
     p_question_type,
