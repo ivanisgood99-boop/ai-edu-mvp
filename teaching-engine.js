@@ -135,7 +135,7 @@
 
         var type = log.stageType || (log.isRemedial ? "remedial" : "practice");
         var hint = /^H[1-4]$/.test(String(log.hintLevel || "")) ? Number(String(log.hintLevel).slice(1)) : 0;
-        var response = await client.rpc("record_learning_answer", {
+        var response = await client.rpc("record_learning_answer_idempotent", {
           p_client_submission_id: log.clientSubmissionId,
           p_chapter_id: log.chapterId || null,
           p_level_id: key,
