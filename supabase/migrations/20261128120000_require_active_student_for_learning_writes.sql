@@ -59,8 +59,7 @@ END IF;
  ON CONFLICT(student_id,level_id) DO UPDATE SET chapter_id=EXCLUDED.chapter_id,stage_x1_completed=EXCLUDED.stage_x1_completed,stage_x2_completed=EXCLUDED.stage_x2_completed,level_completed=EXCLUDED.level_completed,star_rating=EXCLUDED.star_rating,mastery_level=EXCLUDED.mastery_level,completion_status=EXCLUDED.completion_status,accuracy_rate=EXCLUDED.accuracy_rate,recalculated_at=now(),updated_at=now()
  RETURNING * INTO v_row;
  RETURN to_jsonb(v_row);
-END;$function$
-
+END;$function$;
 
 CREATE OR REPLACE FUNCTION public.record_learning_answer(p_chapter_id text, p_level_id text, p_question_type text, p_question_id text, p_raw_answer text, p_is_correct boolean, p_concept_id text DEFAULT NULL::text, p_sub_step integer DEFAULT NULL::integer, p_hint_count integer DEFAULT 0, p_ai_reason text DEFAULT NULL::text)
  RETURNS jsonb
@@ -107,7 +106,7 @@ END IF;
  RETURNING * INTO v_row;
  v_stats:=public.save_summary_and_recompute_level(p_level_id,v_req.chapter_id,v_stage,true);
  RETURN jsonb_build_object('ok',true,'attempt_no',v_attempt,'is_first_attempt',v_attempt=1,'server_is_correct',v_correct,'answer_log',to_jsonb(v_row),'statistics',v_stats);
-END;$function$
+END;$function$;
 
 
 REVOKE ALL ON FUNCTION public.save_summary_and_recompute_level(text,text,text,boolean) FROM PUBLIC, anon;
