@@ -1,7 +1,11 @@
 (function () {
   "use strict";
 
-  var state = { target: null, role: null, busy: false };
+  var state = { target: null, role: null, busy: false, renderId: 0 };
+
+  function isCurrentRender(target, requestId) {
+    return state.target === target && state.renderId === requestId;
+  }
 
   function client() {
     return window.AuthSystemModule && window.AuthSystemModule.getClient
@@ -45,28 +49,33 @@
     target.innerHTML = shell(title, "系統已阻擋未授權存取；若是資料庫政策尚未部署，請先完成預覽驗收。", banner(error && error.message ? error.message : String(error), false));
   }
 
-  async function renderTeacher(target) {
+  async function renderTeacher(target, requestId) {
     try {
       var ctx = await identity("teacher");
+      if (!isCurrentRender(target, requestId)) return;
       var db = ctx.db;
       var result = await db.from("classes").select("id,class_name,invite_code,created_at")
         .eq("teacher_id", ctx.user.id).order("created_at", { ascending: false });
       if (result.error) throw result.error;
+      if (!isCurrentRender(target, requestId)) return;
       var cards = [];
       for (var i = 0; i < (result.data || []).length; i++) {
         var cls = result.data[i];
         var enroll = await db.from("class_enrollments").select("student_id,joined_at")
           .eq("class_id", cls.id);
         if (enroll.error) throw enroll.error;
+        if (!isCurrentRender(target, requestId)) return;
         var ids = (enroll.data || []).map(function (x) { return x.student_id; });
         var names = [];
         var stats = [];
         if (ids.length) {
           var p = await db.from("profiles").select("id,display_name").in("id", ids);
           if (p.error) throw p.error;
+          if (!isCurrentRender(target, requestId)) return;
           names = p.data || [];
           var s = await db.from("learning_statistics").select("student_id,level_id,level_completed,mastery_level").in("student_id", ids);
           if (s.error) throw s.error;
+          if (!isCurrentRender(target, requestId)) return;
           stats = s.data || [];
         }
         var rows = ids.map(function (id) {
@@ -79,14 +88,15 @@
           '<div style="overflow:auto"><table style="width:100%;text-align:left"><thead><tr><th>學生</th><th>完成關卡</th></tr></thead><tbody>' +
           (rows || '<tr><td colspan="2">尚無學生加入</td></tr>') + '</tbody></table></div></article>');
       }
+      if (!isCurrentRender(target, requestId)) return;
       target.innerHTML = shell("教師班級", "建立班級、分享邀請碼，查看班級學生的學習進度。", 
         '<form id="rdCreateClass">' + field("班級名稱","rdClassName","例如：高一數學 A 班") +
         '<button class="sh-btn primary" type="submit">建立班級</button></form>' +
         (cards.join("") || '<p class="sh-card">目前尚未建立班級。</p>'));
-    } catch (e) { showError(target, "教師班級", e); }
+    } catch (e) { if (isCurrentRender(target, requestId)) showError(target, "教師班級", e); }
   }
 
-  async function renderAdmin(target) {
+  async function renderAdmin(target, requestId) {
     try {
       var ctx = await identity("admin"), db = ctx.db;
       var [profiles, apps, logs] = await Promise.all([
@@ -97,6 +107,7 @@
       if (profiles.error) throw profiles.error;
       if (apps.error) throw apps.error;
       if (logs.error) throw logs.error;
+      if (!isCurrentRender(target, requestId)) return;
       var profileRows = (profiles.data || []).map(function (p) {
         return '<tr><td>' + esc(p.display_name) + '</td><td>' + esc(p.role) + '</td><td>' + esc(p.account_status) +
           '</td><td>' + (p.id === ctx.user.id ? '目前帳號' :
@@ -123,10 +134,10 @@
         (profileRows || '<tr><td colspan="4">沒有帳號資料</td></tr>') + '</tbody></table></div>' +
         '<h3 style="margin-top:24px">最近稽核紀錄</h3><div style="overflow:auto"><table style="width:100%;text-align:left"><thead><tr><th>操作</th><th>對象</th><th>時間</th></tr></thead><tbody>' +
         (logRows || '<tr><td colspan="3">尚無稽核紀錄</td></tr>') + '</tbody></table></div>');
-    } catch (e) { showError(target, "平台管理", e); }
+    } catch (e) { if (isCurrentRender(target, requestId)) showError(target, "平台管理", e); }
   }
 
-  async function renderRewards(target) {
+  async function renderRewards(target, requestId) {
     try {
       var ctx = await identity("student"), db = ctx.db, uid = ctx.user.id;
       var results = await Promise.all([
@@ -142,6 +153,7 @@
         db.from("class_enrollments").select("class_id,joined_at,classes(class_name)").order("joined_at",{ascending:false})
       ]);
       results.forEach(function (r) { if (r.error) throw r.error; });
+      if (!isCurrentRender(target, requestId)) return;
       var res=results[0].data, ownedChars=results[2].data||[], skins=results[3].data||[], ownedSkins=results[4].data||[];
       var charRows=(results[1].data||[]).map(function(c){
         var own=ownedChars.find(function(x){return x.character_id===c.id;});
@@ -180,54 +192,61 @@
         '<h3>我的班級</h3><ul>'+(joinedClasses||'<li>目前尚未加入班級。</li>')+'</ul>'+
         '<h3>加入班級</h3><form id="rdJoinClass">'+field("8 位班級邀請碼","rdInviteCode","輸入教師提供的代碼")+'<button class="sh-btn primary" type="submit">加入班級</button></form>'+
         '<h3>申請成為教師</h3><form id="rdTeacherApply">'+field("任教科目","rdSubject","例如：高中數學")+'<button class="sh-btn" type="submit">送出教師申請</button></form>');
-    } catch(e){showError(target,"星際收藏與資源中心",e);}
+    } catch(e){if(isCurrentRender(target,requestId))showError(target,"星際收藏與資源中心",e);}
   }
 
   async function render(target, page) {
-    state.target=target; state.role=page;
     if (!target) return;
-    if (page==="teacher") return renderTeacher(target);
-    if (page==="admin") return renderAdmin(target);
-    if (page==="rewards") return renderRewards(target);
+    state.target=target;
+    state.role=page;
+    var requestId=++state.renderId;
+    if (page==="teacher") return renderTeacher(target,requestId);
+    if (page==="admin") return renderAdmin(target,requestId);
+    if (page==="rewards") return renderRewards(target,requestId);
   }
 
   document.addEventListener("submit",async function(ev){
     if (!ev.target || !state.target) return;
+    var target=state.target, requestId=state.renderId;
     var db=client(), form=ev.target, result;
     try {
       if (form.id==="rdCreateClass") {
         ev.preventDefault(); var name=document.getElementById("rdClassName").value.trim();
         result=await db.rpc("create_teacher_class",{p_class_name:name});
         if(result.error)throw result.error;
-        await render(state.target,"teacher");
+        if(!isCurrentRender(target,requestId))return;
+        await render(target,"teacher");
       } else if(form.id==="rdJoinClass") {
         ev.preventDefault(); var code=document.getElementById("rdInviteCode").value.trim();
         result=await db.rpc("join_class_by_invite_code",{p_invite_code:code});
         if(result.error)throw result.error;
-        await render(state.target,"rewards");
+        if(!isCurrentRender(target,requestId))return;
+        await render(target,"rewards");
       } else if(form.id==="rdTeacherApply") {
         ev.preventDefault(); var subject=document.getElementById("rdSubject").value.trim();
         result=await db.rpc("submit_teacher_application",{p_subject:subject});
         if(result.error)throw result.error;
-        state.target.insertAdjacentHTML("afterbegin",banner("教師申請已送出。",true));
+        if(!isCurrentRender(target,requestId))return;
+        target.insertAdjacentHTML("afterbegin",banner("教師申請已送出。",true));
       }
-    } catch(e){state.target.insertAdjacentHTML("afterbegin",banner(e.message||String(e),false));}
+    } catch(e){if(isCurrentRender(target,requestId))target.insertAdjacentHTML("afterbegin",banner(e.message||String(e),false));}
   });
 
   document.addEventListener("click",async function(ev){
     var t=ev.target;if(!t||!state.target)return;
+    var target=state.target, requestId=state.renderId;
     var app=t.closest("[data-app-id]"), account=t.closest("[data-account-id]");
     var buyChar=t.closest("[data-buy-character]"), buySkin=t.closest("[data-buy-skin]");
     var equipChar=t.closest("[data-equip-character]"), equipSkin=t.closest("[data-equip-skin]");
     try{
       var db=client(),r;
-      if(app){r=await db.rpc("review_teacher_application",{p_application_id:Number(app.dataset.appId),p_decision:app.dataset.decision});if(r.error)throw r.error;await render(state.target,"admin");}
+      if(app){r=await db.rpc("review_teacher_application",{p_application_id:Number(app.dataset.appId),p_decision:app.dataset.decision});if(r.error)throw r.error;if(!isCurrentRender(target,requestId))return;await render(target,"admin");}
       else if(account){r=await db.rpc("admin_set_account_status",{p_target_user:account.dataset.accountId,p_status:account.dataset.nextStatus});if(r.error)throw r.error;await render(state.target,"admin");}
-      else if(buyChar){r=await db.rpc("purchase_character",{p_character_id:buyChar.dataset.buyCharacter});if(r.error)throw r.error;await render(state.target,"rewards");}
+      else if(buyChar){r=await db.rpc("purchase_character",{p_character_id:buyChar.dataset.buyCharacter});if(r.error)throw r.error;if(!isCurrentRender(target,requestId))return;await render(target,"rewards");}
       else if(buySkin){r=await db.rpc("purchase_skin",{p_skin_id:buySkin.dataset.buySkin});if(r.error)throw r.error;await render(state.target,"rewards");}
       else if(equipChar){r=await db.rpc("equip_character",{p_character_id:equipChar.dataset.equipCharacter});if(r.error)throw r.error;await render(state.target,"rewards");}
       else if(equipSkin){r=await db.rpc("equip_skin",{p_skin_id:equipSkin.dataset.equipSkin});if(r.error)throw r.error;await render(state.target,"rewards");}
-    }catch(e){state.target.insertAdjacentHTML("afterbegin",banner(e.message||String(e),false));}
+    }catch(e){if(isCurrentRender(target,requestId))target.insertAdjacentHTML("afterbegin",banner(e.message||String(e),false));}
   });
 
   window.RoleDashboardModule={render:render};
