@@ -132,3 +132,12 @@
 - 追加待部署 migration `20261128120000_require_active_student_for_learning_writes.sql`：`record_learning_answer` 與 `save_summary_and_recompute_level` 均在資料庫端要求 `auth.uid()` 對應的 profile 必須是 active student，避免停用帳號或教師／管理員直接呼叫學生學習寫入 RPC。
 - 三筆待部署安全 migration 已在單一交易內連續執行並回滾；有效學生呼叫作答 RPC 成功，模擬 suspended profile 後，作答 RPC 與總結 RPC 均被拒絕。回滾後正式 profile 仍為 active、學習紀錄仍為 6 筆、學習統計仍為 2 筆，三筆待部署 migration 均未登記於正式 migration history。
 - 新增 Node.js 自動化測試，驗證學習地圖與教學引擎 Level 清單一致、伺服器已保存 X-1 能解鎖跨裝置 X-2，以及不同帳號不會沿用他人的解鎖狀態。CI 首次執行時發現測試本身的跨 VM 陣列比較問題，已修正測試程式並等待重跑；不能把該次失敗描述為功能測試通過。
+
+
+## 最新預覽與 CI（2026-11-28）
+
+- 最新 PR head：`235e68e336b159062e62773128ca8705bd972db4`。
+- 最新 Vercel Preview：READY，https://ai-edu-oc41uuwxu-ivanisgood99-9815.vercel.app；Vercel 專案啟用 SSO，尚未完成真實帳號瀏覽器 E2E。
+- 最新 GitHub Actions run #146：JavaScript syntax 與 `node --test tests/*.test.js` 均成功。
+- 最新 Netlify deploy preview：success。
+- 已透過受保護預覽讀取 HTML、`student-home.js`、`teaching-engine.js` 與 `curriculum-data.js`，確認預覽提供新課程來源與伺服器進度程式碼；這不是互動瀏覽器 E2E。
