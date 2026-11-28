@@ -395,6 +395,11 @@
       if (typeof window.__onStudentSubViewChange === "function") {
         window.__onStudentSubViewChange(st.subView === "map" ? "learningMap" : "studentHome");
       }
+      // Establish the authenticated UID before the statistics read. If that read
+      // fails transiently, the durable answer outbox can still begin retrying.
+      if (window.TeachingEngineModule && typeof window.TeachingEngineModule.setStudentContext === "function") {
+        window.TeachingEngineModule.setStudentContext(st.user.id, []);
+      }
       if (window.LearningStatsAndResourcesModule) {
         var synced = await window.LearningStatsAndResourcesModule.syncResourcesAndRockets();
         if (!isLatestRequest()) return;
