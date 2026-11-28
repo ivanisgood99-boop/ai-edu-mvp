@@ -216,8 +216,8 @@ test("failed answer sync survives reload and retries with the same idempotency k
   first.app.repository.appendLog("student-a", "CH2-L1", {
     chapterId: "CH-2",
     levelId: "CH2-L1",
-    questionId: "CH2-L1-G",
-    stageType: "guide",
+    questionId: "CH2-L1-P1",
+    stageType: "practice",
     studentAnswer: "這是一段足夠完整的數學推理說明",
     isCorrect: false,
     verdict: "submitted",
