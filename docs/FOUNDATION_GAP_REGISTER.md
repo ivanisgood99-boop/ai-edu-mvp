@@ -86,3 +86,11 @@ Supabase Security Advisor 指出下列函式可由 anon 角色呼叫：
 - 舊版教學引擎只依本機紀錄判斷 X-1 是否完成；跨裝置登入時無法可靠還原伺服器進度。分支已改用 Supabase Auth UID 隔離本機進度，並以伺服器 learning_statistics 作為 X-1／X-2 解鎖與精熟度顯示的依據。
 - 追加待部署 migration `20261128120000_require_active_student_for_learning_writes.sql`，要求作答與精熟度重算 RPC 的呼叫者必須是 active student。三筆安全 migration 已在單一交易內執行並回滾；active student 正常寫入、模擬 suspended profile 的兩個 RPC 均拒絕。正式資料與權限未變更。
 - 新增自動化測試涵蓋課程關卡一致性、跨裝置解鎖與跨帳號隔離；首次 CI 執行發現測試框架跨 VM array prototype 比較問題，已修正並等待新一輪 CI 結果。
+
+
+## 上線前額外安全設定（Supabase Security Advisor，2026-11-28）
+
+- Advisor 仍回報 Auth 的 Leaked Password Protection 未啟用。此設定尚未更動；正式上線前應由專案管理者在 Supabase Auth 密碼安全設定中啟用，並驗證註冊／重設密碼流程。
+- Advisor 的 RLS Enabled No Policy 警示包含 private answer keys 與備份快照等刻意預設拒絕存取的資料表；另有尚未啟用的功能表需逐表確認是否應維持 default-deny 或建立唯讀政策，不能為了清除警示而全面開放。
+- Advisor 的 authenticated SECURITY DEFINER 警示包含必要的登入後 RPC（例如伺服器驗證作答與精熟度重算）；這些函式須保留最小權限、固定 search_path、檢查 auth.uid() 與 active student 身分，不應單純為了消除警示而撤銷必要功能。
+- 本輪未修改正式 Auth 設定、正式 RLS 或正式函式權限。
