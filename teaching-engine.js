@@ -135,21 +135,38 @@
 
         var type = log.stageType || (log.isRemedial ? "remedial" : "practice");
         var hint = /^H[1-4]$/.test(String(log.hintLevel || "")) ? Number(String(log.hintLevel).slice(1)) : 0;
-        var response = await client.rpc("record_learning_answer_idempotent", {
-          p_client_submission_id: log.clientSubmissionId,
-          p_chapter_id: log.chapterId || null,
-          p_level_id: key,
-          p_question_type: type,
-          p_question_id: log.questionId,
-          p_raw_answer: String(log.studentAnswer == null ? "" : log.studentAnswer),
-          p_is_correct: Boolean(log.isCorrect),
-          p_concept_id: type === "remedial" ? (log.errorCode || null) : (log.subConcept || null),
-          p_sub_step: null,
-          p_hint_count: hint,
-          p_ai_reason: log.errorCode || log.verdict || null
-        });
-        if (response && response.error) throw new Error(response.error.message || "作答紀錄同步失敗");
-
+        var response;
+        if (type === "guide") {
+          response = await client.functions.invoke("evaluate-guide-answer", {
+            body: {
+              clientSubmissionId: log.clientSubmissionId,
+              levelId: key,
+              questionId: log.questionId,
+              answer: String(log.studentAnswer == null ? "" : log.studentAnswer),
+              hintCount: hint
+            }
+          });
+          if (response && response.error) throw new Error(response.error.message || "AI 引導評量同步失敗");
+          if (!response || !response.data || response.data.ok !== true || !response.data.evaluation) {
+            throw new Error((response && response.data && response.data.error) || "AI 評量服務未回傳有效結果");
+          }
+          applyGuideEvaluationToSession(uid, key, log, response.data);
+        } else {
+          response = await client.rpc("record_learning_answer_idempotent", {
+            p_client_submission_id: log.clientSubmissionId,
+            p_chapter_id: log.chapterId || null,
+            p_level_id: key,
+            p_question_type: type,
+            p_question_id: log.questionId,
+            p_raw_answer: String(log.studentAnswer == null ? "" : log.studentAnswer),
+            p_is_correct: Boolean(log.isCorrect),
+            p_concept_id: type === "remedial" ? (log.errorCode || null) : (log.subConcept || null),
+            p_sub_step: null,
+            p_hint_count: hint,
+            p_ai_reason: log.errorCode || log.verdict || null
+          });
+          if (response && response.error) throw new Error(response.error.message || "作答紀錄同步失敗");
+        }
         removeLearningOutboxEntry(uid, log.clientSubmissionId);
         delete queue.errors[log.clientSubmissionId];
         window.dispatchEvent(new CustomEvent("star-learning:answer-synced", {
@@ -187,6 +204,38 @@
       queueLearningAnswer(entry.levelId, entry.log, uid, false);
     });
   }
+
+  function applyGuideEvaluationToSession(uid, levelId, log, payload) {
+    var evaluation = payload && payload.evaluation ? payload.evaluation : payload;
+    if (!uid || !log || !evaluation || !["pass", "partial", "incorrect", "unclear"].includes(evaluation.verdict)) return;
+    if (typeof Repo === "undefined" || !Repo || typeof Repo.getSession !== "function") return;
+    var session = Repo.getSession(uid, levelId);
+    var savedLog = (session.logs || []).find(function (item) {
+      return item && item.clientSubmissionId === log.clientSubmissionId;
+    });
+    if (!savedLog) return;
+    savedLog.verdict = evaluation.verdict;
+    savedLog.isCorrect = evaluation.verdict === "pass";
+    savedLog.errorCode = evaluation.verdict === "incorrect" ? "E02" : (evaluation.verdict === "pass" ? null : "E05");
+    savedLog.aiFeedback = String(evaluation.feedback || "");
+    savedLog.aiMissingConcepts = Array.isArray(evaluation.missing_concepts) ? evaluation.missing_concepts.slice(0, 6) : [];
+    savedLog.aiNextPrompt = String(evaluation.next_prompt || "");
+    if (evaluation.verdict === "pass") {
+      session.hintLevelIndex = 0;
+      session.subStep = 3;
+      session.checkIndex = 0;
+      session.lastFeedback = "引導說明通過 AI 觀念評量。現在進入「3. 理解檢查」，逐一檢驗本 Level 子觀念。";
+      session.lastFeedbackType = "ok";
+    } else {
+      savedLog.hintLevel = getNextHint(session);
+      var feedback = savedLog.aiFeedback || "目前的說明還不足以確認觀念，請再想一想。";
+      var nextPrompt = savedLog.aiNextPrompt ? " " + savedLog.aiNextPrompt : "";
+      session.lastFeedback = feedback + nextPrompt;
+      session.lastFeedbackType = "guide";
+    }
+    Repo.saveAndSyncMastery(session);
+  }
+
 
   async function flushLearningSync(levelId) {
     var uid = activeStudentId;
@@ -1147,27 +1196,29 @@
     var s = Repo.getSession(sid, lv.levelId);
 
     if (s.stageCode === "X-1" && s.subStep === 2) {
-      var gRes = SemanticHook.analyzeExplanation({ nodeId: lv.legacyNodeId, stage: 2, answer: ans });
+      if (!activeStudentId || String(sid || "") !== activeStudentId) {
+        s.lastFeedback = "請先登入有效的學生帳號，才能使用伺服器 AI 引導評量。";
+        s.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(s);
+        return;
+      }
       var priorG = s.logs.filter(function (x) { return x.questionId === lv.guide.questionId; }).length;
-      s = Repo.appendLog(sid, lv.levelId, {
+      var guideLog = {
+        clientSubmissionId: createClientSubmissionId(),
         chapterId: lv.chapterId, levelId: lv.levelId, knowledgeNode: lv.legacyNodeId,
         questionId: lv.guide.questionId, stageType: "guide", subConcept: lv.subConcepts[0],
-        dimension: lv.guide.dimension, studentAnswer: ans, isCorrect: gRes.ok,
-        verdict: gRes.verdict, errorCode: gRes.errorCode,
-        hintLevel: gRes.ok ? null : getNextHint(s), isFirstTry: priorG === 0,
+        dimension: lv.guide.dimension, studentAnswer: ans, isCorrect: false,
+        verdict: "pending_ai", errorCode: null, hintLevel: null, isFirstTry: priorG === 0,
         isRemedial: false, completedAt: new Date().toISOString()
-      });
-      if (gRes.ok) {
-        s.hintLevelIndex = 0;
-        s.subStep = 3;
-        s.checkIndex = 0;
-        s.lastFeedback = "引導說明清楚！現在進入「3. 理解檢查」，逐一檢驗本 Level 子觀念。";
-        s.lastFeedbackType = "ok";
-      } else {
-        s.lastFeedback = (gRes.supplementPrompt || "請再補充說明你的理由。") + "【提示 " + (lv.hints.H1 || "") + "】";
+      };
+      Repo.appendLog(sid, lv.levelId, guideLog);
+      var syncResult = await queueLearningAnswer(lv.levelId, guideLog, activeStudentId, false);
+      s = Repo.getSession(sid, lv.levelId);
+      if (!syncResult.ok) {
+        s.lastFeedback = "答案已暫存在本機，但 AI 評量服務目前無法完成同步；請稍後重試。原因：" + syncResult.message;
         s.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(s);
       }
-      Repo.saveAndSyncMastery(s);
       return;
     }
 
@@ -1413,7 +1464,7 @@
 
     var subBtn = document.getElementById("te-submit");
     var ansInp = document.getElementById("te-ans");
-    if (subBtn && ansInp) subBtn.addEventListener("click", function () {
+    if (subBtn && ansInp) subBtn.addEventListener("click", async function () {
       var val = ansInp.value.trim();
       if (!val) {
         var cs = Repo.getSession(getSid(), lv.levelId);
@@ -1423,7 +1474,16 @@
         renderEngine(container, lv.levelId);
         return;
       }
-      processSubmit(getSid(), lv.levelId, val);
+      subBtn.disabled = true;
+      subBtn.textContent = "正在評量…";
+      try {
+        await processSubmit(getSid(), lv.levelId, val);
+      } catch (submitError) {
+        var failed = Repo.getSession(getSid(), lv.levelId);
+        failed.lastFeedback = "送出時發生錯誤；若已登入，答案仍會保留待重試。請稍後再試。";
+        failed.lastFeedbackType = "guide";
+        Repo.saveAndSyncMastery(failed);
+      }
       renderEngine(container, lv.levelId);
     });
 
