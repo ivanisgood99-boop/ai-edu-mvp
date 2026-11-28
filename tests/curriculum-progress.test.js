@@ -99,3 +99,57 @@ test("server progress from one account never unlocks another account's level", (
   engine.setStudentContext(null, []);
   assert.equal(engine.getStrictStageAccess("student-a", "CH2-L1", "X-2").allowed, false);
 });
+
+
+function loadLearningStats(rpcRow) {
+  let statisticsReads = 0;
+  const window = {
+    TeachingEngineModule: {
+      async flushLearningSync() { return { ok: true }; }
+    },
+    sbClient: {
+      async rpc() { return { data: rpcRow, error: null }; },
+      from() {
+        return {
+          select() { return this; },
+          eq() { return this; },
+          async order() {
+            statisticsReads += 1;
+            return { data: [], error: null };
+          }
+        };
+      }
+    }
+  };
+  const sandbox = { window, console, Promise, String, Boolean, Number, Object, Array };
+  vm.createContext(sandbox);
+  const source = fs.readFileSync(path.join(process.cwd(), "learning-stats-and-resources.js"), "utf8");
+  vm.runInContext(source, sandbox, { filename: "learning-stats-and-resources.js" });
+  return { module: window.LearningStatsAndResourcesModule, getStatisticsReads: () => statisticsReads };
+}
+
+test("summary RPC cannot report success until the server confirms level_completed", async () => {
+  const app = loadLearningStats({ level_completed: false, stage_x1_completed: true, stage_x2_completed: false });
+  const result = await app.module.commitLearningSummary({
+    levelId: "CH2-L1",
+    chapterId: "CH-2",
+    studentId: "student-a"
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.message, /伺服器尚未確認本 Level 完成/);
+  assert.equal(app.getStatisticsReads(), 0);
+});
+
+test("summary RPC reports success only for server-confirmed completed levels", async () => {
+  const app = loadLearningStats({ level_completed: true, stage_x1_completed: true, stage_x2_completed: true });
+  const result = await app.module.commitLearningSummary({
+    levelId: "CH2-L1",
+    chapterId: "CH-2",
+    studentId: "student-a"
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.updatedRow.level_completed, true);
+  assert.equal(app.getStatisticsReads(), 1);
+});
