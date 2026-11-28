@@ -121,3 +121,14 @@
 - 同一 migration 撤銷 `sync_student_stamina_and_rockets`、`use_rocket_supply` 的 PUBLIC／anon 執行權，只授權 authenticated；另撤銷 trigger function `guard_profile_update` 的一般 API 執行權。
 - 兩筆安全 migration 再次於同一交易執行並 ROLLBACK；以 authenticated 測試身分傳入 `Pacific/Kiritimati`，函式仍回傳伺服器台北日期 `2026-11-27`。權限探針確認 anon=false、authenticated=true。測試交易已回滾，正式資源餘額及日期未變更。
 - 以上是分支中的待部署修正；正式資料庫目前仍維持舊函式定義與舊權限，尚未修復。正式 migration 仍需相容性驗收及使用者明確授權。
+
+
+## 課程來源與跨裝置進度修正（2026-11-28）
+
+- 發現舊版學習地圖直接讀取 `curriculum-data.js`，但內容與教學引擎的實際 Level 不一致：地圖列出的章節／關卡數量可能多於或少於可執行的教學關卡。
+- 學習地圖現在由 `TeachingEngineModule.chapters` 與 `TeachingEngineModule.levels` 產生，教學引擎成為實際課程關卡的單一執行來源；預設進入使用者先前指定的第二章「直線與圓」。
+- 發現教學引擎原先以本機儲存的完成紀錄判斷 X-2 解鎖，登入另一台裝置時可能與資料庫已保存的 X-1 進度衝突。現在將 Supabase Auth UID 作為已登入使用者的本機進度命名空間，並合併伺服器 `learning_statistics` 的 X-1／X-2 完成狀態；不同 UID 不會共用伺服器解鎖狀態。
+- 精熟度與關卡總結狀態會優先顯示伺服器計算結果；本機尚待同步的有效證據仍可保留在本機流程中，總結提交前仍會先 flush 作答同步佇列。
+- 追加待部署 migration `20261128120000_require_active_student_for_learning_writes.sql`：`record_learning_answer` 與 `save_summary_and_recompute_level` 均在資料庫端要求 `auth.uid()` 對應的 profile 必須是 active student，避免停用帳號或教師／管理員直接呼叫學生學習寫入 RPC。
+- 三筆待部署安全 migration 已在單一交易內連續執行並回滾；有效學生呼叫作答 RPC 成功，模擬 suspended profile 後，作答 RPC 與總結 RPC 均被拒絕。回滾後正式 profile 仍為 active、學習紀錄仍為 6 筆、學習統計仍為 2 筆，三筆待部署 migration 均未登記於正式 migration history。
+- 新增 Node.js 自動化測試，驗證學習地圖與教學引擎 Level 清單一致、伺服器已保存 X-1 能解鎖跨裝置 X-2，以及不同帳號不會沿用他人的解鎖狀態。CI 首次執行時發現測試本身的跨 VM 陣列比較問題，已修正測試程式並等待重跑；不能把該次失敗描述為功能測試通過。
