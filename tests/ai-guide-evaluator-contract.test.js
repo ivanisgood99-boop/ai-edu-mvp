@@ -94,3 +94,11 @@ test("guide answers redact common personal identifiers before model submission",
   assert.ok(edgeFunction.includes("studentAnswer: safeAnswer"));
   assert.ok(edgeFunction.includes("p_raw_answer: safeAnswer"));
 });
+
+
+test("browser outbox redacts common personal identifiers before persistence", () => {
+  const engine = fs.readFileSync(path.join(process.cwd(), "teaching-engine.js"), "utf8");
+  assert.ok(engine.includes("function redactGuideAnswerForStorage(value)"));
+  assert.ok(engine.includes("studentAnswer: safeAnswer"));
+  assert.ok(engine.includes("答案過短或包含需遮蔽的識別資訊"));
+});
