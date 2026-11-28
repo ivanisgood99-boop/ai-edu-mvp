@@ -68,7 +68,17 @@
       return { ok: false, message: "儲存失敗：" + rpcRes.error.message };
     }
 
-    // RPC 已成功代表資料庫寫入完成；後續讀取統計失敗不可被誤報為寫入失敗。
+    // RPC transport 成功不代表 Level 已通過伺服器端完成條件；必須檢查重算結果。
+    var updatedRow = rpcRes ? rpcRes.data : null;
+    if (!updatedRow || updatedRow.level_completed !== true) {
+      return {
+        ok: false,
+        message: "伺服器尚未確認本 Level 完成。請確認所有必要作答已成功同步，再重新提交學習總結。",
+        updatedRow: updatedRow
+      };
+    }
+
+    // 只有伺服器確認 level_completed=true 後，才回報正式完成。
     var uid = opts && opts.studentId ? opts.studentId : null;
     var statsWarning = null;
     var freshStats = [];
@@ -87,7 +97,7 @@
     return {
       ok: true,
       message: "已成功更新學習紀錄與精熟程度。",
-      updatedRow: rpcRes ? rpcRes.data : null,
+      updatedRow: updatedRow,
       stats: freshStats,
       statsWarning: statsWarning
     };
