@@ -153,3 +153,109 @@ test("summary RPC reports success only for server-confirmed completed levels", a
   assert.equal(result.updatedRow.level_completed, true);
   assert.equal(app.getStatisticsReads(), 1);
 });
+
+
+function loadSyncEngine(storage, rpcHandler) {
+  const calls = [];
+  const window = {
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent() {},
+    AuthSystemModule: {
+      async getCurrentSession() { return { user: { id: "student-a" } }; }
+    },
+    sbClient: {
+      async rpc(name, args) {
+        calls.push({ name, args });
+        return rpcHandler(name, args);
+      }
+    }
+  };
+  const sandbox = {
+    window,
+    document: {
+      addEventListener() {},
+      removeEventListener() {},
+      getElementById() { return null; },
+      querySelectorAll() { return []; }
+    },
+    localStorage: {
+      getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+      setItem(key, value) { storage.set(key, String(value)); },
+      removeItem(key) { storage.delete(key); }
+    },
+    CustomEvent: class CustomEvent {
+      constructor(type, options) { this.type = type; this.detail = options && options.detail; }
+    },
+    console,
+    Date,
+    Promise,
+    Math,
+    JSON,
+    Object,
+    Array,
+    String,
+    Number,
+    Boolean,
+    RegExp,
+    Error,
+    Uint8Array
+  };
+  vm.createContext(sandbox);
+  for (const file of ["curriculum-data.js", "teaching-engine.js"]) {
+    const source = fs.readFileSync(path.join(process.cwd(), file), "utf8");
+    vm.runInContext(source, sandbox, { filename: file });
+  }
+  return { app: window.TeachingEngineModule, calls };
+}
+
+test("failed answer sync survives reload and retries with the same idempotency key", async () => {
+  const storage = new Map();
+  const first = loadSyncEngine(storage, async () => ({ data: null, error: { message: "temporary network failure" } }));
+  first.app.setStudentContext("student-a", []);
+  first.app.repository.appendLog("student-a", "CH2-L1", {
+    chapterId: "CH-2",
+    levelId: "CH2-L1",
+    questionId: "CH2-L1-G",
+    stageType: "guide",
+    studentAnswer: "這是一段足夠完整的數學推理說明",
+    isCorrect: false,
+    verdict: "submitted",
+    isRemedial: false
+  });
+
+  const firstFlush = await first.app.flushLearningSync("CH2-L1");
+  assert.equal(firstFlush.ok, false);
+  assert.equal(first.calls.length, 1);
+  const firstSubmissionId = first.calls[0].args.p_client_submission_id;
+  assert.match(firstSubmissionId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+
+  const second = loadSyncEngine(storage, async () => ({ data: { ok: true, duplicate: false }, error: null }));
+  second.app.setStudentContext("student-a", []);
+  const secondFlush = await second.app.flushLearningSync("CH2-L1");
+
+  assert.equal(secondFlush.ok, true);
+  assert.equal(second.calls.length, 1);
+  assert.equal(second.calls[0].args.p_client_submission_id, firstSubmissionId);
+  assert.deepEqual(JSON.parse(storage.get("ai_edu_answer_outbox_v1:student-a")), []);
+});
+
+test("answer outbox is isolated by authenticated student UID", () => {
+  const storage = new Map();
+  const app = loadSyncEngine(storage, async () => ({ data: { ok: true }, error: null }));
+  app.app.setStudentContext("student-a", []);
+  app.app.repository.appendLog("student-a", "CH2-L1", {
+    chapterId: "CH-2",
+    levelId: "CH2-L1",
+    questionId: "CH2-L1-G",
+    stageType: "guide",
+    studentAnswer: "這是一段足夠完整的數學推理說明",
+    isCorrect: false,
+    verdict: "submitted",
+    isRemedial: false
+  });
+
+  const outboxA = JSON.parse(storage.get("ai_edu_answer_outbox_v1:student-a"));
+  assert.equal(outboxA.length, 1);
+  assert.equal(storage.has("ai_edu_answer_outbox_v1:student-b"), false);
+});
