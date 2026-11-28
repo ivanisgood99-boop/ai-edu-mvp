@@ -1142,7 +1142,7 @@
     return renderLevelSummary(lv, s, starEv);
   }
 
-  function processSubmit(sid, levelId, ans) {
+  async function processSubmit(sid, levelId, ans) {
     var lv = LEVEL_MAP[levelId] || LEVELS[0];
     var s = Repo.getSession(sid, lv.levelId);
 
