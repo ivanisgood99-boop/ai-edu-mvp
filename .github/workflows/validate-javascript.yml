@@ -32,3 +32,7 @@ jobs:
           node --check role-dashboards.js
       - name: Test curriculum and server progress integration
         run: node --test tests/*.test.js
+      - name: Set up Deno for Supabase Edge Function checks
+        uses: denoland/setup-deno@v2
+      - name: Type-check server-side AI evaluator
+        run: deno check --no-lock supabase/functions/evaluate-guide-answer/index.ts
