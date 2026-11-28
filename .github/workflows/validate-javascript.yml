@@ -24,8 +24,11 @@ jobs:
           node-version: 20
       - name: Check changed application scripts
         run: |
+          node --check curriculum-data.js
           node --check auth-system.js
           node --check learning-stats-and-resources.js
           node --check student-home.js
           node --check teaching-engine.js
           node --check role-dashboards.js
+      - name: Test curriculum and server progress integration
+        run: node --test tests/*.test.js
