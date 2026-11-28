@@ -56,7 +56,9 @@ BEGIN
        OR v_existing.question_id IS DISTINCT FROM p_question_id
        OR v_existing.raw_answer IS DISTINCT FROM COALESCE(p_raw_answer, '')
        OR v_existing.concept_id IS DISTINCT FROM p_concept_id
-       OR v_existing.hint_count IS DISTINCT FROM p_hint_count THEN
+       OR v_existing.sub_step IS DISTINCT FROM p_sub_step
+       OR v_existing.hint_count IS DISTINCT FROM p_hint_count
+       OR v_existing.ai_reason IS DISTINCT FROM p_ai_reason THEN
       RAISE EXCEPTION 'Client submission ID was reused with a different payload';
     END IF;
 
