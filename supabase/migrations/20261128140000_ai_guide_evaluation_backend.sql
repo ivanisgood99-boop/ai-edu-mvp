@@ -55,6 +55,38 @@ ON CONFLICT (level_id) DO UPDATE SET
   is_active = EXCLUDED.is_active,
   updated_at = now();
 
+-- The Edge Function retrieves rubrics through a service-only RPC; the private
+-- schema itself is never exposed through the public Data API.
+CREATE OR REPLACE FUNCTION public.get_learning_guide_rubric(
+  p_level_id text,
+  p_question_id text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, private
+AS $function$
+DECLARE
+  v_rubric private.learning_guide_rubrics%ROWTYPE;
+BEGIN
+  IF current_setting('request.jwt.claim.role', true) IS DISTINCT FROM 'service_role' THEN
+    RAISE EXCEPTION 'Forbidden: service role required';
+  END IF;
+  SELECT * INTO v_rubric
+  FROM private.learning_guide_rubrics
+  WHERE level_id = p_level_id
+    AND guide_question_id = p_question_id
+    AND is_active = true;
+  IF NOT FOUND THEN
+    RETURN NULL;
+  END IF;
+  RETURN to_jsonb(v_rubric);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.get_learning_guide_rubric(text,text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_learning_guide_rubric(text,text) TO service_role;
+
 -- Only the authenticated Edge Function's service-role client can persist an AI
 -- evaluation. Browser clients cannot mark their own guide answers as evaluated.
 CREATE OR REPLACE FUNCTION public.record_learning_guide_evaluation(
@@ -89,7 +121,8 @@ BEGIN
   IF p_student_id IS NULL OR p_client_submission_id IS NULL THEN
     RAISE EXCEPTION 'Student and client submission IDs are required';
   END IF;
-  IF p_verdict NOT IN ('pass', 'partial', 'incorrect', 'unclear')
+  IF p_verdict IS NULL OR p_score IS NULL OR p_hint_count IS NULL
+     OR p_verdict NOT IN ('pass', 'partial', 'incorrect', 'unclear')
      OR p_score < 0 OR p_score > 4
      OR ((p_verdict = 'pass') IS DISTINCT FROM (p_score >= 3)) THEN
     RAISE EXCEPTION 'Invalid guide evaluation result';
