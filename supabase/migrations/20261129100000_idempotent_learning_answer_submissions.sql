@@ -9,7 +9,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS learning_answer_logs_student_submission_uidx
   ON public.learning_answer_logs (student_id, client_submission_id)
   WHERE client_submission_id IS NOT NULL;
 
-CREATE OR REPLACE FUNCTION public.record_learning_answer(
+CREATE OR REPLACE FUNCTION public.record_learning_answer_idempotent(
   p_client_submission_id uuid,
   p_chapter_id text,
   p_level_id text,
@@ -78,7 +78,7 @@ BEGIN
 
   -- Delegate curriculum validation, server-side answer-key checking, attempt
   -- numbering and mastery recomputation to the already hardened RPC.
-  v_result := public.record_learning_answer(
+  v_result := public.record_learning_answer_idempotent(
     p_chapter_id,
     p_level_id,
     p_question_type,
@@ -114,10 +114,10 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.record_learning_answer(uuid,text,text,text,text,text,boolean,text,integer,integer,text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.record_learning_answer(uuid,text,text,text,text,text,boolean,text,integer,integer,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.record_learning_answer_idempotent(uuid,text,text,text,text,text,boolean,text,integer,integer,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.record_learning_answer_idempotent(uuid,text,text,text,text,text,boolean,text,integer,integer,text) TO authenticated;
 
 COMMENT ON COLUMN public.learning_answer_logs.client_submission_id
   IS 'Client-generated UUID used to make browser answer retries idempotent per student.';
-COMMENT ON FUNCTION public.record_learning_answer(uuid,text,text,text,text,text,boolean,text,integer,integer,text)
+COMMENT ON FUNCTION public.record_learning_answer_idempotent(uuid,text,text,text,text,text,boolean,text,integer,integer,text)
   IS 'Idempotent authenticated answer submission. Repeating the same client UUID returns the original row without incrementing attempts.';
