@@ -263,8 +263,8 @@ BEGIN
     'verdict', p_verdict,
     'score', p_score,
     'feedback', p_feedback,
-    'missingConcepts', COALESCE(to_jsonb(p_missing_concepts), '[]'::jsonb),
-    'nextPrompt', p_next_prompt,
+    'missing_concepts', COALESCE(to_jsonb(p_missing_concepts), '[]'::jsonb),
+    'next_prompt', p_next_prompt,
     'model', p_model,
     'rubricVersion', v_rubric.rubric_version
   );
