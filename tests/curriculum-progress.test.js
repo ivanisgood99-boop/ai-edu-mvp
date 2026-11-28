@@ -275,3 +275,12 @@ test("idempotent answer migration defines a separate secured RPC and unique per-
   assert.ok(migration.includes("role = 'student' AND p.account_status = 'active'"));
   assert.ok(migration.includes("REVOKE ALL ON FUNCTION public.record_learning_answer_idempotent"));
 });
+
+
+test("student context starts outbox recovery before statistics refresh can fail", () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "student-home.js"), "utf8");
+  const contextIndex = source.indexOf('setStudentContext(st.user.id, []);');
+  const statisticsIndex = source.indexOf('fetchStudentStatistics(st.user.id)');
+  assert.ok(contextIndex >= 0);
+  assert.ok(statisticsIndex > contextIndex);
+});
