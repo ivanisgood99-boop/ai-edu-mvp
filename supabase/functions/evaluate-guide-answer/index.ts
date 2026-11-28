@@ -35,6 +35,14 @@ async function hashUserId(userId: string) {
     .slice(0, 64);
 }
 
+function redactPersonalData(value: string) {
+  return value
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, "[已遮蔽電子郵件]")
+    .replace(/\\b[A-Z][12]\\d{8}\\b/gi, "[已遮蔽身分識別碼]")
+    .replace(/\\b09\\d{2}[- ]?\\d{3}[- ]?\\d{3}\\b/g, "[已遮蔽電話]")
+    .replace(/\\b0[2-8][-\\s]?\\d{3,4}[-\\s]?\\d{4}\\b/g, "[已遮蔽電話]");
+}
+
 function validEvaluation(value: unknown): value is {
   verdict: "pass" | "partial" | "incorrect" | "unclear";
   score: number;
@@ -116,6 +124,7 @@ Deno.serve(async (request: Request) => {
     const questionId = String(body.questionId || "");
     const answer = String(body.answer || "");
     const hintCount = Number(body.hintCount ?? 0);
+    const safeAnswer = redactPersonalData(answer);
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidPattern.test(clientSubmissionId) || !/^CH[1-3]-L[1-6]$/.test(levelId)
       || !questionId || questionId.length > 80 || answer.trim().length < 8
@@ -134,7 +143,7 @@ Deno.serve(async (request: Request) => {
     if (existingError) return json(503, { ok: false, error: "Could not check previous submission" });
     if (existing) {
       if (existing.question_type !== "guide" || existing.level_id !== levelId
-        || existing.question_id !== questionId || existing.raw_answer !== answer) {
+        || existing.question_id !== questionId || existing.raw_answer !== safeAnswer) {
         return json(409, { ok: false, error: "Submission ID was reused with different content" });
       }
       const evaluation = existing.ai_evaluation;
@@ -195,7 +204,7 @@ Deno.serve(async (request: Request) => {
       referenceDefinition: rubric.reference_definition,
       referenceDerivation: rubric.reference_derivation,
       conditions: rubric.conditions,
-      studentAnswer: answer,
+      studentAnswer: safeAnswer,
     };
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -254,7 +263,7 @@ Deno.serve(async (request: Request) => {
       p_client_submission_id: clientSubmissionId,
       p_level_id: levelId,
       p_question_id: questionId,
-      p_raw_answer: answer,
+      p_raw_answer: safeAnswer,
       p_verdict: typedEvaluation.verdict,
       p_score: typedEvaluation.score,
       p_feedback: typedEvaluation.feedback,
