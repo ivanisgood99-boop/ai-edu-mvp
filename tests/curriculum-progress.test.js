@@ -267,11 +267,11 @@ test("idempotent answer migration defines a separate secured RPC and unique per-
     path.join(process.cwd(), "supabase/migrations/20261129100000_idempotent_learning_answer_submissions.sql"),
     "utf8"
   );
-  assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS learning_answer_logs_student_submission_uidx/);
-  assert.match(migration, /FUNCTION public\\.record_learning_answer_idempotent/);
-  assert.match(migration, /pg_advisory_xact_lock/);
-  assert.match(migration, /client_submission_id = p_client_submission_id/);
-  assert.match(migration, /public\\.record_learning_answer\\(/);
-  assert.match(migration, /role = 'student' AND p\\.account_status = 'active'/);
-  assert.match(migration, /REVOKE ALL ON FUNCTION public\\.record_learning_answer_idempotent/);
+  assert.ok(migration.includes("CREATE UNIQUE INDEX IF NOT EXISTS learning_answer_logs_student_submission_uidx"));
+  assert.ok(migration.includes("FUNCTION public.record_learning_answer_idempotent("));
+  assert.ok(migration.includes("pg_advisory_xact_lock"));
+  assert.ok(migration.includes("client_submission_id = p_client_submission_id"));
+  assert.ok(migration.includes("v_result := public.record_learning_answer("));
+  assert.ok(migration.includes("role = 'student' AND p.account_status = 'active'"));
+  assert.ok(migration.includes("REVOKE ALL ON FUNCTION public.record_learning_answer_idempotent"));
 });
